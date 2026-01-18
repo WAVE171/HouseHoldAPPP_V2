@@ -36,6 +36,18 @@ import { RecipesPage } from '@/features/recipes';
 // Admin
 import { AdminPage } from '@/features/admin';
 
+// Settings
+import { SettingsPage } from '@/features/settings';
+
+// Profile
+import { ProfilePage } from '@/features/profile';
+
+// Pets
+import { PetsPage } from '@/features/pets';
+
+// Kids
+import { KidsPage } from '@/features/kids';
+
 // Placeholder pages for other modules
 function PlaceholderPage({ title }: { title: string }) {
   return (
@@ -100,7 +112,7 @@ export const router = createBrowserRouter([
       },
       {
         path: '/pets',
-        element: <PlaceholderPage title="Pets" />,
+        element: <PetsPage />,
       },
       {
         path: '/tasks',
@@ -136,11 +148,15 @@ export const router = createBrowserRouter([
       },
       {
         path: '/settings',
-        element: <PlaceholderPage title="Settings" />,
+        element: <SettingsPage />,
       },
       {
         path: '/profile',
-        element: <PlaceholderPage title="Profile" />,
+        element: <ProfilePage />,
+      },
+      {
+        path: '/kids',
+        element: <KidsPage />,
       },
     ],
   },
