@@ -21,6 +21,21 @@ import { CalendarPage } from '@/features/calendar';
 // Inventory
 import { InventoryPage } from '@/features/inventory';
 
+// Finance
+import { FinancePage } from '@/features/finance';
+
+// Vehicles
+import { VehiclesPage } from '@/features/vehicles';
+
+// Employees
+import { EmployeesPage } from '@/features/employees';
+
+// Recipes
+import { RecipesPage } from '@/features/recipes';
+
+// Admin
+import { AdminPage } from '@/features/admin';
+
 // Placeholder pages for other modules
 function PlaceholderPage({ title }: { title: string }) {
   return (
@@ -75,13 +90,13 @@ export const router = createBrowserRouter([
         path: '/employees',
         element: (
           <ProtectedRoute roles={['ADMIN', 'PARENT']}>
-            <PlaceholderPage title="Employees" />
+            <EmployeesPage />
           </ProtectedRoute>
         ),
       },
       {
         path: '/vehicles',
-        element: <PlaceholderPage title="Vehicles" />,
+        element: <VehiclesPage />,
       },
       {
         path: '/pets',
@@ -99,7 +114,7 @@ export const router = createBrowserRouter([
         path: '/finance',
         element: (
           <ProtectedRoute roles={['ADMIN', 'PARENT']}>
-            <PlaceholderPage title="Finance" />
+            <FinancePage />
           </ProtectedRoute>
         ),
       },
@@ -109,13 +124,13 @@ export const router = createBrowserRouter([
       },
       {
         path: '/recipes',
-        element: <PlaceholderPage title="Recipes" />,
+        element: <RecipesPage />,
       },
       {
         path: '/admin',
         element: (
           <ProtectedRoute roles={['ADMIN']}>
-            <PlaceholderPage title="Admin Panel" />
+            <AdminPage />
           </ProtectedRoute>
         ),
       },
