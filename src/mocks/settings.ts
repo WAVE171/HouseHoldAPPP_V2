@@ -9,11 +9,11 @@ import type {
 
 export const mockPreferences: UserPreferences = {
   theme: 'system',
-  language: 'en',
-  timezone: 'America/New_York',
-  dateFormat: 'MM/DD/YYYY',
-  timeFormat: '12h',
-  currency: 'USD',
+  language: 'pt-PT',
+  timezone: 'Africa/Luanda',
+  dateFormat: 'DD/MM/YYYY',
+  timeFormat: '24h',
+  currency: 'AOA',
 };
 
 export const mockNotificationSettings: NotificationSettings = {
@@ -66,7 +66,7 @@ export const mockLoginHistory: LoginHistoryEntry[] = [
     id: '1',
     timestamp: new Date().toISOString(),
     ipAddress: '192.168.1.100',
-    location: 'New York, NY',
+    location: 'Luanda, Angola',
     device: 'Chrome on macOS',
     status: 'success',
   },
@@ -74,7 +74,7 @@ export const mockLoginHistory: LoginHistoryEntry[] = [
     id: '2',
     timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
     ipAddress: '192.168.1.100',
-    location: 'New York, NY',
+    location: 'Luanda, Angola',
     device: 'Safari on iOS',
     status: 'success',
   },
@@ -82,7 +82,7 @@ export const mockLoginHistory: LoginHistoryEntry[] = [
     id: '3',
     timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
     ipAddress: '10.0.0.50',
-    location: 'Brooklyn, NY',
+    location: 'Benguela, Angola',
     device: 'Firefox on Windows',
     status: 'success',
   },
@@ -90,7 +90,7 @@ export const mockLoginHistory: LoginHistoryEntry[] = [
     id: '4',
     timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
     ipAddress: '45.33.32.156',
-    location: 'Unknown',
+    location: 'Desconhecido',
     device: 'Chrome on Linux',
     status: 'failed',
   },

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Sun, Moon, Monitor, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card';
 import { Label } from '@/shared/components/ui/label';
@@ -10,6 +10,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/shared/components/ui/select';
+import { useLanguage, availableLanguages, type Language } from '@/shared/i18n';
+import { getCurrencyOptions } from '@/shared/lib/currency';
 import type { UserPreferences } from '../types/settings.types';
 
 interface PreferencesSettingsProps {
@@ -17,45 +19,44 @@ interface PreferencesSettingsProps {
   onUpdate: (preferences: Partial<UserPreferences>) => Promise<void>;
 }
 
-const languages = [
-  { value: 'en', label: 'English' },
-  { value: 'es', label: 'Spanish' },
-  { value: 'fr', label: 'French' },
-  { value: 'de', label: 'German' },
-  { value: 'pt', label: 'Portuguese' },
-];
-
 const timezones = [
-  { value: 'America/New_York', label: 'Eastern Time (ET)' },
-  { value: 'America/Chicago', label: 'Central Time (CT)' },
-  { value: 'America/Denver', label: 'Mountain Time (MT)' },
-  { value: 'America/Los_Angeles', label: 'Pacific Time (PT)' },
-  { value: 'America/Anchorage', label: 'Alaska Time (AKT)' },
-  { value: 'Pacific/Honolulu', label: 'Hawaii Time (HT)' },
-  { value: 'Europe/London', label: 'London (GMT)' },
+  { value: 'Africa/Luanda', label: 'Luanda (WAT)' },
+  { value: 'Europe/Lisbon', label: 'Lisboa (WET)' },
+  { value: 'Europe/London', label: 'Londres (GMT)' },
   { value: 'Europe/Paris', label: 'Paris (CET)' },
+  { value: 'America/New_York', label: 'Nova Iorque (ET)' },
+  { value: 'America/Sao_Paulo', label: 'São Paulo (BRT)' },
+  { value: 'Africa/Johannesburg', label: 'Joanesburgo (SAST)' },
 ];
 
 const dateFormats = [
-  { value: 'MM/DD/YYYY', label: 'MM/DD/YYYY' },
   { value: 'DD/MM/YYYY', label: 'DD/MM/YYYY' },
+  { value: 'MM/DD/YYYY', label: 'MM/DD/YYYY' },
   { value: 'YYYY-MM-DD', label: 'YYYY-MM-DD' },
 ];
 
-const currencies = [
-  { value: 'USD', label: 'USD ($)' },
-  { value: 'EUR', label: 'EUR (\u20AC)' },
-  { value: 'GBP', label: 'GBP (\u00A3)' },
-  { value: 'CAD', label: 'CAD ($)' },
-  { value: 'AUD', label: 'AUD ($)' },
-];
-
 export function PreferencesSettings({ preferences, onUpdate }: PreferencesSettingsProps) {
+  const { language, setLanguage, t } = useLanguage();
   const [isLoading, setIsLoading] = useState(false);
   const [localPrefs, setLocalPrefs] = useState(preferences);
 
+  // Get currency options based on current language
+  const currencies = getCurrencyOptions(language);
+
+  // Sync local language with global language context
+  useEffect(() => {
+    if (localPrefs.language !== language) {
+      setLocalPrefs(prev => ({ ...prev, language }));
+    }
+  }, [language, localPrefs.language]);
+
   const handleChange = (key: keyof UserPreferences, value: string) => {
     setLocalPrefs(prev => ({ ...prev, [key]: value }));
+
+    // If language changes, also update the global language context
+    if (key === 'language') {
+      setLanguage(value as Language);
+    }
   };
 
   const handleSave = async () => {
@@ -72,18 +73,20 @@ export function PreferencesSettings({ preferences, onUpdate }: PreferencesSettin
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Preferences</CardTitle>
-        <CardDescription>Customize your app experience</CardDescription>
+        <CardTitle>{t.settings.preferences}</CardTitle>
+        <CardDescription>
+          {language === 'pt-PT' ? 'Personalize a sua experiência' : 'Customize your app experience'}
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Theme */}
         <div className="space-y-2">
-          <Label>Theme</Label>
+          <Label>{t.settings.theme}</Label>
           <div className="flex gap-2">
             {[
-              { value: 'light', icon: Sun, label: 'Light' },
-              { value: 'dark', icon: Moon, label: 'Dark' },
-              { value: 'system', icon: Monitor, label: 'System' },
+              { value: 'light', icon: Sun, label: t.settings.light },
+              { value: 'dark', icon: Moon, label: t.settings.dark },
+              { value: 'system', icon: Monitor, label: t.settings.system },
             ].map(({ value, icon: Icon, label }) => (
               <Button
                 key={value}
@@ -100,13 +103,13 @@ export function PreferencesSettings({ preferences, onUpdate }: PreferencesSettin
 
         {/* Language */}
         <div className="space-y-2">
-          <Label>Language</Label>
+          <Label>{t.settings.language}</Label>
           <Select value={localPrefs.language} onValueChange={(v) => handleChange('language', v)}>
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {languages.map(lang => (
+              {availableLanguages.map(lang => (
                 <SelectItem key={lang.value} value={lang.value}>
                   {lang.label}
                 </SelectItem>
@@ -117,7 +120,7 @@ export function PreferencesSettings({ preferences, onUpdate }: PreferencesSettin
 
         {/* Timezone */}
         <div className="space-y-2">
-          <Label>Timezone</Label>
+          <Label>{t.settings.timezone}</Label>
           <Select value={localPrefs.timezone} onValueChange={(v) => handleChange('timezone', v)}>
             <SelectTrigger>
               <SelectValue />
@@ -135,7 +138,7 @@ export function PreferencesSettings({ preferences, onUpdate }: PreferencesSettin
         {/* Date & Time Format */}
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label>Date Format</Label>
+            <Label>{t.settings.dateFormat}</Label>
             <Select value={localPrefs.dateFormat} onValueChange={(v) => handleChange('dateFormat', v)}>
               <SelectTrigger>
                 <SelectValue />
@@ -151,7 +154,7 @@ export function PreferencesSettings({ preferences, onUpdate }: PreferencesSettin
           </div>
 
           <div className="space-y-2">
-            <Label>Time Format</Label>
+            <Label>{t.settings.timeFormat}</Label>
             <Select value={localPrefs.timeFormat} onValueChange={(v) => handleChange('timeFormat', v as '12h' | '24h')}>
               <SelectTrigger>
                 <SelectValue />
@@ -166,7 +169,7 @@ export function PreferencesSettings({ preferences, onUpdate }: PreferencesSettin
 
         {/* Currency */}
         <div className="space-y-2">
-          <Label>Currency</Label>
+          <Label>{t.settings.currency}</Label>
           <Select value={localPrefs.currency} onValueChange={(v) => handleChange('currency', v)}>
             <SelectTrigger>
               <SelectValue />
@@ -187,10 +190,10 @@ export function PreferencesSettings({ preferences, onUpdate }: PreferencesSettin
             {isLoading ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Saving...
+                {t.common.saving}
               </>
             ) : (
-              'Save Preferences'
+              t.settings.savePreferences
             )}
           </Button>
         )}

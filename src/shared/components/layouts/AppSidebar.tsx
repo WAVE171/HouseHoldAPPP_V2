@@ -12,6 +12,7 @@ import {
   ChefHat,
   Settings,
   Shield,
+  Baby,
 } from 'lucide-react';
 
 import {
@@ -27,74 +28,81 @@ import {
   SidebarFooter,
 } from '@/shared/components/ui/sidebar';
 import { useAuthStore } from '@/features/auth';
-
-const mainNavItems = [
-  {
-    title: 'Dashboard',
-    icon: LayoutDashboard,
-    href: '/dashboard',
-  },
-  {
-    title: 'Household',
-    icon: Home,
-    href: '/household',
-  },
-  {
-    title: 'Employees',
-    icon: Users,
-    href: '/employees',
-    roles: ['ADMIN', 'PARENT'],
-  },
-  {
-    title: 'Vehicles',
-    icon: Car,
-    href: '/vehicles',
-  },
-  {
-    title: 'Pets',
-    icon: PawPrint,
-    href: '/pets',
-  },
-  {
-    title: 'Tasks',
-    icon: CheckSquare,
-    href: '/tasks',
-  },
-  {
-    title: 'Inventory',
-    icon: Package,
-    href: '/inventory',
-  },
-  {
-    title: 'Finance',
-    icon: Wallet,
-    href: '/finance',
-    roles: ['ADMIN', 'PARENT'],
-  },
-  {
-    title: 'Calendar',
-    icon: Calendar,
-    href: '/calendar',
-  },
-  {
-    title: 'Recipes',
-    icon: ChefHat,
-    href: '/recipes',
-  },
-];
-
-const adminNavItems = [
-  {
-    title: 'Admin Panel',
-    icon: Shield,
-    href: '/admin',
-    roles: ['ADMIN'],
-  },
-];
+import { useLanguage } from '@/shared/i18n';
 
 export function AppSidebar() {
   const location = useLocation();
   const { user } = useAuthStore();
+  const { t } = useLanguage();
+
+  const mainNavItems = [
+    {
+      title: t.navigation.dashboard,
+      icon: LayoutDashboard,
+      href: '/dashboard',
+    },
+    {
+      title: t.navigation.household,
+      icon: Home,
+      href: '/household',
+    },
+    {
+      title: t.navigation.employees,
+      icon: Users,
+      href: '/employees',
+      roles: ['ADMIN', 'PARENT'],
+    },
+    {
+      title: t.navigation.vehicles,
+      icon: Car,
+      href: '/vehicles',
+    },
+    {
+      title: t.navigation.pets,
+      icon: PawPrint,
+      href: '/pets',
+    },
+    {
+      title: t.navigation.kids,
+      icon: Baby,
+      href: '/kids',
+    },
+    {
+      title: t.navigation.tasks,
+      icon: CheckSquare,
+      href: '/tasks',
+    },
+    {
+      title: t.navigation.inventory,
+      icon: Package,
+      href: '/inventory',
+    },
+    {
+      title: t.navigation.finance,
+      icon: Wallet,
+      href: '/finance',
+      roles: ['ADMIN', 'PARENT'],
+    },
+    {
+      title: t.navigation.calendar,
+      icon: Calendar,
+      href: '/calendar',
+    },
+    {
+      title: t.navigation.recipes,
+      icon: ChefHat,
+      href: '/recipes',
+    },
+  ];
+
+  const adminNavItems = [
+    {
+      title: t.navigation.admin,
+      icon: Shield,
+      href: '/admin',
+      roles: ['ADMIN'],
+    },
+  ];
 
   const filterByRole = (items: typeof mainNavItems) => {
     return items.filter((item) => {
@@ -120,7 +128,9 @@ export function AppSidebar() {
 
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Navigation</SidebarGroupLabel>
+          <SidebarGroupLabel>
+            {t.navigation.dashboard === 'Painel' ? 'Navegação' : 'Navigation'}
+          </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {filteredMainNav.map((item) => (
@@ -142,7 +152,9 @@ export function AppSidebar() {
 
         {filteredAdminNav.length > 0 && (
           <SidebarGroup>
-            <SidebarGroupLabel>Administration</SidebarGroupLabel>
+            <SidebarGroupLabel>
+              {t.navigation.admin === 'Administração' ? 'Administração' : 'Administration'}
+            </SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
                 {filteredAdminNav.map((item) => (
@@ -170,7 +182,7 @@ export function AppSidebar() {
             <SidebarMenuButton asChild isActive={location.pathname === '/settings'}>
               <NavLink to="/settings">
                 <Settings className="h-4 w-4" />
-                <span>Settings</span>
+                <span>{t.navigation.settings}</span>
               </NavLink>
             </SidebarMenuButton>
           </SidebarMenuItem>
