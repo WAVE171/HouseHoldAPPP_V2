@@ -3,15 +3,18 @@ import { List, LayoutGrid, Calendar } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger } from '@/shared/components/ui/tabs';
 import { TaskListView } from '../components/TaskListView';
 import { TaskKanbanView } from '../components/TaskKanbanView';
+import { TaskCalendarView } from '../components/TaskCalendarView';
 import { TaskFiltersComponent, type TaskFilters } from '../components/TaskFilters';
 import { CreateTaskDialog } from '../components/CreateTaskDialog';
-import { mockTasks, taskTags, createTask, type Task } from '@/mocks/tasks';
+import { EditTaskDialog } from '../components/EditTaskDialog';
+import { mockTasks, taskTags, createTask, updateTask, type Task } from '@/mocks/tasks';
 
 type ViewMode = 'list' | 'kanban' | 'calendar';
 
 export function TasksPage() {
   const [tasks, setTasks] = useState<Task[]>(mockTasks);
   const [viewMode, setViewMode] = useState<ViewMode>('list');
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [filters, setFilters] = useState<TaskFilters>({
     search: '',
     status: [],
@@ -69,8 +72,12 @@ export function TasksPage() {
   };
 
   const handleEditTask = (task: Task) => {
-    // In a real app, this would open an edit dialog
-    console.log('Edit task:', task);
+    setEditingTask(task);
+  };
+
+  const handleSaveTask = async (updatedTask: Task) => {
+    const saved = await updateTask(updatedTask.id, updatedTask);
+    setTasks(tasks.map(t => t.id === saved.id ? saved : t));
   };
 
   const handleDeleteTask = async (taskId: string) => {
@@ -157,13 +164,25 @@ export function TasksPage() {
       )}
 
       {viewMode === 'calendar' && (
-        <div className="flex items-center justify-center h-[400px] border rounded-lg bg-muted/50">
-          <div className="text-center text-muted-foreground">
-            <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p>Calendar view coming soon</p>
-            <p className="text-sm">Tasks will be displayed on a calendar by due date</p>
-          </div>
-        </div>
+        <TaskCalendarView
+          tasks={filteredTasks}
+          onStatusChange={handleStatusChange}
+          onEdit={handleEditTask}
+          onDelete={handleDeleteTask}
+          onClick={handleTaskClick}
+        />
+      )}
+
+      {/* Edit Task Dialog */}
+      {editingTask && (
+        <EditTaskDialog
+          task={editingTask}
+          open={!!editingTask}
+          onOpenChange={(open) => !open && setEditingTask(null)}
+          assignees={assignees}
+          availableTags={taskTags}
+          onSave={handleSaveTask}
+        />
       )}
     </div>
   );

@@ -3,6 +3,8 @@ import { HouseholdProfile } from '../components/HouseholdProfile';
 import { MembersList } from '../components/MembersList';
 import { InvitationsList } from '../components/InvitationsList';
 import { InviteMemberDialog } from '../components/InviteMemberDialog';
+import { EditHouseholdDialog } from '../components/EditHouseholdDialog';
+import { EditMemberDialog } from '../components/EditMemberDialog';
 import { useAuthStore } from '@/features/auth';
 import {
   mockHousehold,
@@ -16,9 +18,11 @@ import {
 
 export function HouseholdPage() {
   const { user } = useAuthStore();
-  const [household, _setHousehold] = useState<Household>(mockHousehold);
+  const [household, setHousehold] = useState<Household>(mockHousehold);
   const [members, setMembers] = useState<HouseholdMember[]>(mockMembers);
   const [invitations, setInvitations] = useState<Invitation[]>(mockInvitations);
+  const [editHouseholdOpen, setEditHouseholdOpen] = useState(false);
+  const [editingMember, setEditingMember] = useState<HouseholdMember | null>(null);
 
   const canManageMembers = user?.role === 'ADMIN' || user?.role === 'PARENT';
 
@@ -54,6 +58,18 @@ export function HouseholdPage() {
     ));
   };
 
+  const handleSaveHousehold = async (updated: Household) => {
+    setHousehold(updated);
+  };
+
+  const handleEditMember = (member: HouseholdMember) => {
+    setEditingMember(member);
+  };
+
+  const handleSaveMember = async (updated: HouseholdMember) => {
+    setMembers(members.map(m => m.id === updated.id ? updated : m));
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -72,7 +88,10 @@ export function HouseholdPage() {
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Household Profile - Takes 1 column */}
         <div className="lg:col-span-1">
-          <HouseholdProfile household={household} />
+          <HouseholdProfile
+            household={household}
+            onEdit={() => setEditHouseholdOpen(true)}
+          />
         </div>
 
         {/* Members and Invitations - Takes 2 columns */}
@@ -81,6 +100,7 @@ export function HouseholdPage() {
             members={members}
             onRemove={canManageMembers ? handleRemoveMember : undefined}
             onChangeRole={canManageMembers ? handleChangeRole : undefined}
+            onEdit={canManageMembers ? handleEditMember : undefined}
           />
 
           {canManageMembers && invitations.length > 0 && (
@@ -92,6 +112,24 @@ export function HouseholdPage() {
           )}
         </div>
       </div>
+
+      {/* Edit Household Dialog */}
+      <EditHouseholdDialog
+        household={household}
+        open={editHouseholdOpen}
+        onOpenChange={setEditHouseholdOpen}
+        onSave={handleSaveHousehold}
+      />
+
+      {/* Edit Member Dialog */}
+      {editingMember && (
+        <EditMemberDialog
+          member={editingMember}
+          open={!!editingMember}
+          onOpenChange={(open) => !open && setEditingMember(null)}
+          onSave={handleSaveMember}
+        />
+      )}
     </div>
   );
 }

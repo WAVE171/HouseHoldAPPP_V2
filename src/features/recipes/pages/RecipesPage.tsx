@@ -11,11 +11,13 @@ import {
 } from '@/shared/components/ui/select';
 import { RecipeCard } from '../components/RecipeCard';
 import { RecipeDetails } from '../components/RecipeDetails';
+import { AddRecipeDialog } from '../components/AddRecipeDialog';
 import type { Recipe, MealPlan } from '../types/recipes.types';
 import {
   mockRecipes,
   mockMealPlans,
   toggleFavorite as toggleFavoriteApi,
+  addRecipe,
 } from '@/mocks/recipes';
 
 export function RecipesPage() {
@@ -64,6 +66,11 @@ export function RecipesPage() {
     }
   };
 
+  const handleAddRecipe = async (recipeData: Omit<Recipe, 'id'>) => {
+    const newRecipe = await addRecipe(recipeData);
+    setRecipes(prev => [...prev, newRecipe]);
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-[500px]">
@@ -91,6 +98,7 @@ export function RecipesPage() {
             Browse, save, and plan your household meals.
           </p>
         </div>
+        <AddRecipeDialog onAddRecipe={handleAddRecipe} />
       </div>
 
       {/* Filters */}
