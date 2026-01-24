@@ -32,9 +32,16 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Response interceptor - handles common errors
+// Response interceptor - unwraps data and handles errors
 apiClient.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // Backend wraps responses in { data: ..., meta: ... }
+    // Unwrap the data property for cleaner frontend usage
+    if (response.data && 'data' in response.data) {
+      response.data = response.data.data;
+    }
+    return response;
+  },
   async (error: AxiosError) => {
     const originalRequest = error.config;
 
