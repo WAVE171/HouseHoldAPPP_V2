@@ -15,6 +15,10 @@ import { VehiclesModule } from './modules/vehicles/vehicles.module';
 import { PetsModule } from './modules/pets/pets.module';
 import { EmployeesModule } from './modules/employees/employees.module';
 import { RecipesModule } from './modules/recipes/recipes.module';
+import { ScanningModule } from './modules/scanning/scanning.module';
+import { DashboardModule } from './modules/dashboard/dashboard.module';
+import { AdminModule } from './modules/admin/admin.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
 import { JwtAuthGuard } from './common/guards';
 import {
   appConfig,
@@ -42,6 +46,10 @@ import {
     PetsModule,
     EmployeesModule,
     RecipesModule,
+    ScanningModule,
+    DashboardModule,
+    AdminModule,
+    NotificationsModule,
   ],
   controllers: [AppController],
   providers: [

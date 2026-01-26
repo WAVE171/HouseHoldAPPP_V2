@@ -12,6 +12,10 @@ export { vehiclesApi } from './vehicles.api';
 export { petsApi } from './pets.api';
 export { employeesApi } from './employees.api';
 export { recipesApi } from './recipes.api';
+export { scanningApi } from './scanning.api';
+export { dashboardApi } from './dashboard.api';
+export { adminApi } from './admin.api';
+export { notificationsApi } from './notifications.api';
 
 // Types
 export type {
@@ -82,3 +86,40 @@ export type {
   CreateIngredientData,
   CreateInstructionData,
 } from './recipes.api';
+
+export type {
+  ScannedReceipt,
+  ScannedReceiptItem,
+  CreateReceiptData,
+  CreateReceiptItemData,
+  BarcodeProduct,
+  CreateBarcodeProductData,
+} from './scanning.api';
+
+export type {
+  DashboardStats,
+  ActivityItem,
+  UpcomingTask,
+  UpcomingEvent,
+  ExpiringItem,
+  FinanceSummary as DashboardFinanceSummary,
+} from './dashboard.api';
+
+export type {
+  AdminUser,
+  AdminUserDetails,
+  HouseholdInfo,
+  AuditLog,
+  AuditLogQuery,
+  AuditLogResponse,
+  SystemStats,
+  UserRole,
+} from './admin.api';
+
+export type {
+  Notification,
+  NotificationQuery,
+  NotificationResponse,
+  CreateNotificationData,
+  NotificationType,
+} from './notifications.api';

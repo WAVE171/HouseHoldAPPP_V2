@@ -895,6 +895,73 @@ model RecipeInstruction {
 }
 
 // ============================================
+// SCANNING
+// ============================================
+
+model ScannedReceipt {
+  id          String   @id @default(cuid())
+  imageUrl    String?
+  storeName   String
+  storeAddress String?
+  date        DateTime
+  subtotal    Float?
+  tax         Float?
+  total       Float
+  paymentMethod String?
+  rawText     String?
+  confidence  Float?
+  ocrService  String?
+
+  linkedTransactionId String?
+
+  householdId String
+
+  items       ScannedReceiptItem[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([householdId])
+  @@index([date])
+  @@map("scanned_receipts")
+}
+
+model ScannedReceiptItem {
+  id          String   @id @default(cuid())
+  name        String
+  quantity    Float    @default(1)
+  unitPrice   Float
+  totalPrice  Float
+  category    String?
+  matchedInventoryId String?
+  confidence  Float?
+
+  receiptId   String
+  receipt     ScannedReceipt @relation(fields: [receiptId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime @default(now())
+
+  @@index([receiptId])
+  @@map("scanned_receipt_items")
+}
+
+model BarcodeProduct {
+  id          String   @id @default(cuid())
+  barcode     String   @unique
+  name        String
+  brand       String?
+  category    String?
+  imageUrl    String?
+  defaultPrice Float?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([barcode])
+  @@map("barcode_products")
+}
+
+// ============================================
 // AUDIT & NOTIFICATIONS
 // ============================================
 
