@@ -46,10 +46,15 @@ apiClient.interceptors.response.use(
     const originalRequest = error.config;
 
     // Handle 401 Unauthorized - token expired
+    // Don't redirect for auth endpoints (login, register, forgot-password, reset-password)
     if (error.response?.status === 401 && originalRequest) {
-      // Clear auth state and redirect to login
-      localStorage.removeItem('auth-storage');
-      window.location.href = '/login';
+      const isAuthEndpoint = originalRequest.url?.includes('/auth/');
+
+      if (!isAuthEndpoint) {
+        // Clear auth state and redirect to login only for protected routes
+        localStorage.removeItem('auth-storage');
+        window.location.href = '/login';
+      }
       return Promise.reject(error);
     }
 
