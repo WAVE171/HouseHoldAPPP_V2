@@ -4,7 +4,7 @@ import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { AuthLayout, MainLayout } from '@/shared/components/layouts';
 
 // Auth
-import { LoginPage, RegisterPage, ProtectedRoute } from '@/features/auth';
+import { LoginPage, RegisterPage, ForgotPasswordPage, ResetPasswordPage, ProtectedRoute } from '@/features/auth';
 
 // Dashboard
 import { DashboardPage } from '@/features/dashboard';
@@ -80,7 +80,11 @@ export const router = createBrowserRouter([
       },
       {
         path: '/forgot-password',
-        element: <PlaceholderPage title="Forgot Password" />,
+        element: <ForgotPasswordPage />,
+      },
+      {
+        path: '/reset-password',
+        element: <ResetPasswordPage />,
       },
     ],
   },

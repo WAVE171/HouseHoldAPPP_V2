@@ -19,6 +19,8 @@ import {
   RegisterDto,
   RefreshTokenDto,
   TokenResponseDto,
+  ForgotPasswordDto,
+  ResetPasswordDto,
 } from './dto';
 import { Public, CurrentUser } from '../../common/decorators';
 import type { JwtPayload } from '../../common/decorators';
@@ -82,5 +84,34 @@ export class AuthController {
     @CurrentUser() user: JwtPayload,
   ): Promise<{ success: boolean }> {
     return this.authService.logout(user.sub);
+  }
+
+  @Public()
+  @Post('forgot-password')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Request password reset email' })
+  @ApiResponse({
+    status: 200,
+    description: 'Password reset email sent if account exists',
+  })
+  async forgotPassword(
+    @Body() forgotPasswordDto: ForgotPasswordDto,
+  ): Promise<{ message: string }> {
+    return this.authService.requestPasswordReset(forgotPasswordDto);
+  }
+
+  @Public()
+  @Post('reset-password')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Reset password with token' })
+  @ApiResponse({
+    status: 200,
+    description: 'Password reset successful',
+  })
+  @ApiResponse({ status: 400, description: 'Invalid or expired token' })
+  async resetPassword(
+    @Body() resetPasswordDto: ResetPasswordDto,
+  ): Promise<{ message: string }> {
+    return this.authService.resetPassword(resetPasswordDto);
   }
 }

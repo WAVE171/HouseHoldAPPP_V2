@@ -2,13 +2,15 @@ import {
   Injectable,
   UnauthorizedException,
   ConflictException,
+  BadRequestException,
   Logger,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcryptjs';
+import * as crypto from 'crypto';
 import { PrismaService } from '../../database/prisma.service';
-import { LoginDto, RegisterDto, TokenResponseDto, UserResponseDto } from './dto';
+import { LoginDto, RegisterDto, TokenResponseDto, UserResponseDto, ForgotPasswordDto, ResetPasswordDto } from './dto';
 import { Role } from '@prisma/client';
 
 @Injectable()
@@ -224,5 +226,103 @@ export class AuthService {
       expiresIn: 900, // 15 minutes in seconds
       user: userResponse,
     };
+  }
+
+  async requestPasswordReset(forgotPasswordDto: ForgotPasswordDto): Promise<{ message: string }> {
+    const { email } = forgotPasswordDto;
+
+    // Find user by email - don't reveal if user exists
+    const user = await this.prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (user) {
+      // Generate secure random token
+      const rawToken = crypto.randomBytes(32).toString('hex');
+
+      // Hash token before storing
+      const hashedToken = await bcrypt.hash(rawToken, 10);
+
+      // Set expiration (1 hour from now)
+      const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
+
+      // Save to database
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: {
+          passwordResetToken: hashedToken,
+          passwordResetExpiresAt: expiresAt,
+        },
+      });
+
+      // Log reset link to console (development mode)
+      const frontendUrl = this.configService.get<string>('FRONTEND_URL') || 'http://localhost:5173';
+      const resetLink = `${frontendUrl}/reset-password?token=${rawToken}`;
+
+      console.log('\n========================================');
+      console.log('PASSWORD RESET REQUEST');
+      console.log('========================================');
+      console.log(`Email: ${email}`);
+      console.log(`Reset Link: ${resetLink}`);
+      console.log(`Token expires: ${expiresAt.toISOString()}`);
+      console.log('========================================\n');
+
+      this.logger.log(`Password reset requested for: ${email}`);
+    }
+
+    // Always return generic message - don't reveal if user exists
+    return { message: 'If an account with that email exists, a password reset link has been sent.' };
+  }
+
+  async resetPassword(resetPasswordDto: ResetPasswordDto): Promise<{ message: string }> {
+    const { token, password, confirmPassword } = resetPasswordDto;
+
+    // Validate passwords match
+    if (password !== confirmPassword) {
+      throw new BadRequestException('Passwords do not match');
+    }
+
+    // Find users with non-expired reset tokens
+    const users = await this.prisma.user.findMany({
+      where: {
+        passwordResetToken: { not: null },
+        passwordResetExpiresAt: { gt: new Date() },
+      },
+    });
+
+    // Find the user with the matching token
+    let matchedUser: typeof users[number] | null = null;
+    for (const user of users) {
+      if (user.passwordResetToken) {
+        const isValidToken = await bcrypt.compare(token, user.passwordResetToken);
+        if (isValidToken) {
+          matchedUser = user;
+          break;
+        }
+      }
+    }
+
+    if (!matchedUser) {
+      throw new BadRequestException('Invalid or expired reset token');
+    }
+
+    // Hash new password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Update password and clear reset token
+    await this.prisma.user.update({
+      where: { id: matchedUser.id },
+      data: {
+        password: hashedPassword,
+        passwordResetToken: null,
+        passwordResetExpiresAt: null,
+        failedLoginAttempts: 0,
+        lockedUntil: null,
+      },
+    });
+
+    this.logger.log(`Password reset successful for: ${matchedUser.email}`);
+
+    return { message: 'Password has been reset successfully. You can now log in with your new password.' };
   }
 }

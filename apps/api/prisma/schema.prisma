@@ -110,6 +110,10 @@ model User {
   lockedUntil         DateTime?
   lastLoginAt         DateTime?
 
+  // Password Reset
+  passwordResetToken      String?
+  passwordResetExpiresAt  DateTime?
+
   sessions  Session[]
 
   createdAt DateTime @default(now())
