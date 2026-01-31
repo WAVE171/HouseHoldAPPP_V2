@@ -186,6 +186,7 @@ model Household {
   employees Employee[]
   vehicles  Vehicle[]
   pets      Pet[]
+  children  Child[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -830,6 +831,32 @@ model PetExpense {
 
   @@index([petId, date])
   @@map("pet_expenses")
+}
+
+// ============================================
+// CHILDREN
+// ============================================
+
+model Child {
+  id                String    @id @default(cuid())
+  firstName         String
+  lastName          String
+  nickname          String?
+  photo             String?
+  dateOfBirth       DateTime?
+  gender            String?
+  bloodType         String?
+  allergies         String[]
+  medicalConditions String[]
+
+  householdId String
+  household   Household @relation(fields: [householdId], references: [id])
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([householdId])
+  @@map("children")
 }
 
 // ============================================

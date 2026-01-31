@@ -12,6 +12,7 @@ export { vehiclesApi } from './vehicles.api';
 export { petsApi } from './pets.api';
 export { employeesApi } from './employees.api';
 export { recipesApi } from './recipes.api';
+export { kidsApi } from './kids.api';
 export { scanningApi } from './scanning.api';
 export { dashboardApi } from './dashboard.api';
 export { adminApi } from './admin.api';

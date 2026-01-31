@@ -1,13 +1,16 @@
+export type VehicleType = 'CAR' | 'TRUCK' | 'SUV' | 'VAN' | 'MOTORCYCLE' | 'OTHER';
+
 export interface Vehicle {
   id: string;
+  type: VehicleType;
   make: string;
   model: string;
   year: number;
-  color: string;
-  licensePlate: string;
+  color?: string;
+  licensePlate?: string;
   vin?: string;
-  mileage: number;
-  fuelType: 'gasoline' | 'diesel' | 'electric' | 'hybrid';
+  mileage?: number;
+  fuelType?: 'gasoline' | 'diesel' | 'electric' | 'hybrid';
   insuranceProvider?: string;
   insuranceExpiry?: string;
   registrationExpiry?: string;

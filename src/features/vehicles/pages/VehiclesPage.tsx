@@ -21,15 +21,15 @@ export function VehiclesPage() {
         const data = await vehiclesApi.getVehicles();
         const mappedVehicles: Vehicle[] = data.map(v => ({
           id: v.id,
-          name: `${v.make} ${v.model}`,
+          type: v.type,
           make: v.make,
           model: v.model,
           year: v.year,
-          type: v.type.toLowerCase() as Vehicle['type'],
           color: v.color,
           licensePlate: v.licensePlate,
           vin: v.vin,
           mileage: v.mileage,
+          householdId: v.householdId,
         }));
         setVehicles(mappedVehicles);
 
@@ -79,7 +79,7 @@ export function VehiclesPage() {
   const handleAddVehicle = async (vehicleData: Omit<Vehicle, 'id'>) => {
     try {
       const created = await vehiclesApi.createVehicle({
-        type: vehicleData.type.toUpperCase() as 'CAR' | 'TRUCK' | 'SUV' | 'VAN' | 'MOTORCYCLE' | 'OTHER',
+        type: vehicleData.type,
         make: vehicleData.make,
         model: vehicleData.model,
         year: vehicleData.year,
@@ -90,15 +90,15 @@ export function VehiclesPage() {
       });
       const newVehicle: Vehicle = {
         id: created.id,
-        name: `${created.make} ${created.model}`,
+        type: created.type,
         make: created.make,
         model: created.model,
         year: created.year,
-        type: created.type.toLowerCase() as Vehicle['type'],
         color: created.color,
         licensePlate: created.licensePlate,
         vin: created.vin,
         mileage: created.mileage,
+        householdId: created.householdId,
       };
       setVehicles(prev => [...prev, newVehicle]);
     } catch (error) {

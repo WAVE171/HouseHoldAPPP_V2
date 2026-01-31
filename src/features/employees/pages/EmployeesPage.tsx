@@ -6,11 +6,14 @@ import { Badge } from '@/shared/components/ui/badge';
 import { EmployeeCard } from '../components/EmployeeCard';
 import { PayrollSummary } from '../components/PayrollSummary';
 import { ScheduleOverview } from '../components/ScheduleOverview';
+import { AddEmployeeDialog } from '../components/AddEmployeeDialog';
 import type { Employee, PayrollRecord, TimeEntry } from '../types/employees.types';
-import { employeesApi } from '@/shared/api';
+import { employeesApi, type CreateEmployeeData } from '@/shared/api/employees.api';
+import { useToast } from '@/shared/hooks/use-toast';
 import { mockPayrollRecords, mockTimeEntries, processPayroll } from '@/mocks/employees';
 
 export function EmployeesPage() {
+  const { toast } = useToast();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [payrollRecords, setPayrollRecords] = useState<PayrollRecord[]>([]);
   const [_timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
@@ -76,6 +79,43 @@ export function EmployeesPage() {
     );
   };
 
+  const handleAddEmployee = async (data: CreateEmployeeData) => {
+    try {
+      const created = await employeesApi.createEmployee(data);
+      const newEmployee: Employee = {
+        id: created.id,
+        firstName: created.firstName,
+        lastName: created.lastName,
+        email: created.email,
+        phone: created.phone,
+        address: created.address,
+        position: created.position,
+        department: created.department as Employee['department'],
+        employmentType: created.employmentType as Employee['employmentType'],
+        salary: created.salary,
+        payFrequency: created.payFrequency as Employee['payFrequency'],
+        hireDate: created.hireDate,
+        terminationDate: created.terminationDate,
+        emergencyContactName: created.emergencyContactName,
+        emergencyContactPhone: created.emergencyContactPhone,
+        photo: created.photo,
+        status: 'active',
+      };
+      setEmployees(prev => [...prev, newEmployee]);
+      toast({
+        title: 'Success',
+        description: `${created.firstName} ${created.lastName} has been added`,
+      });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to add employee',
+        variant: 'destructive',
+      });
+      throw error;
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-[500px]">
@@ -93,6 +133,7 @@ export function EmployeesPage() {
             Manage household staff, schedules, and payroll.
           </p>
         </div>
+        <AddEmployeeDialog onAddEmployee={handleAddEmployee} />
       </div>
 
       {/* Schedule Overview */}

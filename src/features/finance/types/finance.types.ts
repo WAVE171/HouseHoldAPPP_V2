@@ -15,10 +15,10 @@ export interface Transaction {
   category: string;
   date: string;
   paymentMethod?: string;
-  recurring?: boolean;
+  isRecurring?: boolean;
   notes?: string;
-  createdBy: string;
-  householdId: string;
+  createdBy?: string;
+  householdId?: string;
 }
 
 export interface Bill {
@@ -39,8 +39,7 @@ export interface Bill {
 export interface FinanceSummary {
   totalIncome: number;
   totalExpenses: number;
-  totalBudget: number;
-  totalSpent: number;
-  savingsRate: number;
+  balance: number;
+  budgetRemaining: number;
   upcomingBills: number;
 }

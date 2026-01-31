@@ -22,17 +22,27 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/shared/components/ui/select';
-import type { Vehicle } from '../types/vehicles.types';
+import type { Vehicle, VehicleType } from '../types/vehicles.types';
+
+const vehicleTypes: { value: VehicleType; label: string }[] = [
+  { value: 'CAR', label: 'Car' },
+  { value: 'TRUCK', label: 'Truck' },
+  { value: 'SUV', label: 'SUV' },
+  { value: 'VAN', label: 'Van' },
+  { value: 'MOTORCYCLE', label: 'Motorcycle' },
+  { value: 'OTHER', label: 'Other' },
+];
 
 const vehicleSchema = z.object({
+  type: z.enum(['CAR', 'TRUCK', 'SUV', 'VAN', 'MOTORCYCLE', 'OTHER'] as const),
   make: z.string().min(1, 'Make is required'),
   model: z.string().min(1, 'Model is required'),
   year: z.number().min(1900).max(new Date().getFullYear() + 1),
-  color: z.string().min(1, 'Color is required'),
-  licensePlate: z.string().min(1, 'License plate is required'),
+  color: z.string().optional(),
+  licensePlate: z.string().optional(),
   vin: z.string().optional(),
-  mileage: z.number().min(0),
-  fuelType: z.enum(['gasoline', 'diesel', 'electric', 'hybrid']),
+  mileage: z.number().min(0).optional(),
+  fuelType: z.enum(['gasoline', 'diesel', 'electric', 'hybrid']).optional(),
   insuranceProvider: z.string().optional(),
   insuranceExpiry: z.string().optional(),
   registrationExpiry: z.string().optional(),
@@ -60,6 +70,7 @@ export function AddVehicleDialog({ householdMembers, onAddVehicle }: AddVehicleD
   } = useForm<VehicleFormData>({
     resolver: zodResolver(vehicleSchema),
     defaultValues: {
+      type: 'CAR',
       make: '',
       model: '',
       year: new Date().getFullYear(),
@@ -75,6 +86,7 @@ export function AddVehicleDialog({ householdMembers, onAddVehicle }: AddVehicleD
     },
   });
 
+  const vehicleType = watch('type');
   const fuelType = watch('fuelType');
   const primaryDriver = watch('primaryDriver');
 
@@ -115,6 +127,28 @@ export function AddVehicleDialog({ householdMembers, onAddVehicle }: AddVehicleD
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <div className="space-y-2">
+            <Label>Vehicle Type</Label>
+            <Select
+              value={vehicleType}
+              onValueChange={(value) => setValue('type', value as VehicleType)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select vehicle type" />
+              </SelectTrigger>
+              <SelectContent>
+                {vehicleTypes.map((vt) => (
+                  <SelectItem key={vt.value} value={vt.value}>
+                    {vt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {errors.type && (
+              <p className="text-sm text-destructive">{errors.type.message}</p>
+            )}
+          </div>
+
           <div className="grid grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label htmlFor="year">Year</Label>

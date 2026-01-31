@@ -71,7 +71,7 @@ export function TransactionList({ transactions }: TransactionListProps) {
                 </div>
                 <div>
                   <div className="font-medium">{transaction.description}</div>
-                  {transaction.recurring && (
+                  {transaction.isRecurring && (
                     <div className="flex items-center gap-1 text-xs text-muted-foreground">
                       <Repeat className="h-3 w-3" />
                       Recurring

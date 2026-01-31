@@ -18,18 +18,27 @@ interface VehicleCardProps {
   onSelect: (vehicle: Vehicle) => void;
 }
 
-const fuelTypeLabels: Record<Vehicle['fuelType'], string> = {
+const fuelTypeLabels: Record<string, string> = {
   gasoline: 'Gas',
   diesel: 'Diesel',
   electric: 'Electric',
   hybrid: 'Hybrid',
 };
 
-const fuelTypeColors: Record<Vehicle['fuelType'], string> = {
+const fuelTypeColors: Record<string, string> = {
   gasoline: 'bg-orange-100 text-orange-700',
   diesel: 'bg-gray-100 text-gray-700',
   electric: 'bg-green-100 text-green-700',
   hybrid: 'bg-blue-100 text-blue-700',
+};
+
+const vehicleTypeLabels: Record<string, string> = {
+  CAR: 'Car',
+  TRUCK: 'Truck',
+  SUV: 'SUV',
+  VAN: 'Van',
+  MOTORCYCLE: 'Motorcycle',
+  OTHER: 'Other',
 };
 
 export function VehicleCard({ vehicle, onSelect }: VehicleCardProps) {
@@ -62,23 +71,27 @@ export function VehicleCard({ vehicle, onSelect }: VehicleCardProps) {
               <p className="text-sm text-muted-foreground">{vehicle.color}</p>
             </div>
           </div>
-          <Badge className={fuelTypeColors[vehicle.fuelType]}>
-            {fuelTypeLabels[vehicle.fuelType]}
+          <Badge className="bg-primary/10 text-primary">
+            {vehicleTypeLabels[vehicle.type] || vehicle.type}
           </Badge>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Quick Stats */}
         <div className="grid grid-cols-2 gap-4">
-          <div className="flex items-center gap-2">
-            <Gauge className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm">
-              {vehicle.mileage.toLocaleString()} mi
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium">{vehicle.licensePlate}</span>
-          </div>
+          {vehicle.mileage !== undefined && (
+            <div className="flex items-center gap-2">
+              <Gauge className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm">
+                {vehicle.mileage.toLocaleString()} mi
+              </span>
+            </div>
+          )}
+          {vehicle.licensePlate && (
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium">{vehicle.licensePlate}</span>
+            </div>
+          )}
         </div>
 
         {/* Driver */}

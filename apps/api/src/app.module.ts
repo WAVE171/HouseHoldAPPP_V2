@@ -15,6 +15,7 @@ import { VehiclesModule } from './modules/vehicles/vehicles.module';
 import { PetsModule } from './modules/pets/pets.module';
 import { EmployeesModule } from './modules/employees/employees.module';
 import { RecipesModule } from './modules/recipes/recipes.module';
+import { KidsModule } from './modules/kids/kids.module';
 import { ScanningModule } from './modules/scanning/scanning.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { AdminModule } from './modules/admin/admin.module';
@@ -46,6 +47,7 @@ import {
     PetsModule,
     EmployeesModule,
     RecipesModule,
+    KidsModule,
     ScanningModule,
     DashboardModule,
     AdminModule,

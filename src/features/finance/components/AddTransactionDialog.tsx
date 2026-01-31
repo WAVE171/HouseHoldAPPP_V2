@@ -34,7 +34,7 @@ const transactionSchema = z.object({
   category: z.string().min(1, 'Category is required'),
   date: z.string().min(1, 'Date is required'),
   paymentMethod: z.string().optional(),
-  recurring: z.boolean(),
+  isRecurring: z.boolean(),
   notes: z.string().max(500).optional(),
 });
 
@@ -88,7 +88,7 @@ export function AddTransactionDialog({ onAddTransaction }: AddTransactionDialogP
       category: '',
       date: format(new Date(), 'yyyy-MM-dd'),
       paymentMethod: '',
-      recurring: false,
+      isRecurring: false,
       notes: '',
     },
   });
@@ -96,7 +96,7 @@ export function AddTransactionDialog({ onAddTransaction }: AddTransactionDialogP
   const transactionType = watch('type');
   const category = watch('category');
   const paymentMethod = watch('paymentMethod');
-  const recurring = watch('recurring');
+  const isRecurring = watch('isRecurring');
 
   const categories = transactionType === 'income' ? incomeCategories : expenseCategories;
 
@@ -238,11 +238,11 @@ export function AddTransactionDialog({ onAddTransaction }: AddTransactionDialogP
 
           <div className="flex items-center space-x-2">
             <Checkbox
-              id="recurring"
-              checked={recurring}
-              onCheckedChange={(checked) => setValue('recurring', checked === true)}
+              id="isRecurring"
+              checked={isRecurring}
+              onCheckedChange={(checked) => setValue('isRecurring', checked === true)}
             />
-            <Label htmlFor="recurring" className="cursor-pointer">
+            <Label htmlFor="isRecurring" className="cursor-pointer">
               This is a recurring transaction
             </Label>
           </div>

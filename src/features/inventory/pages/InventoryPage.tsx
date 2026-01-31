@@ -8,6 +8,8 @@ import { CategoryCards } from '../components/CategoryCards';
 import { InventoryList } from '../components/InventoryList';
 import { ShoppingList } from '../components/ShoppingList';
 import { AddItemDialog } from '../components/AddItemDialog';
+import { AddCategoryDialog } from '../components/AddCategoryDialog';
+import { useToast } from '@/shared/hooks/use-toast';
 import type { InventoryItem, InventoryCategory, ShoppingListItem } from '../types/inventory.types';
 import { inventoryApi } from '@/shared/api';
 import {
@@ -18,6 +20,7 @@ import {
 } from '@/mocks/inventory';
 
 export function InventoryPage() {
+  const { toast } = useToast();
   const [categories, setCategories] = useState<InventoryCategory[]>([]);
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [shoppingList, setShoppingList] = useState<ShoppingListItem[]>([]);
@@ -174,6 +177,37 @@ export function InventoryPage() {
     setShoppingList(prev => prev.filter(i => i.id !== id));
   };
 
+  const handleAddCategory = async (categoryData: { name: string; icon: string; color: string }) => {
+    try {
+      const created = await inventoryApi.createCategory({
+        name: categoryData.name,
+        icon: categoryData.icon,
+        color: categoryData.color,
+      });
+      const newCategory: InventoryCategory = {
+        id: created.id,
+        name: created.name,
+        icon: created.icon || 'Package',
+        color: created.color || 'bg-gray-100',
+        count: 0,
+      };
+      setCategories(prev => [...prev, newCategory]);
+      categoriesRef.current = [...categoriesRef.current, { id: created.id, name: created.name }];
+      toast({
+        title: 'Success',
+        description: `Category "${created.name}" has been created`,
+      });
+    } catch (error) {
+      console.error('Failed to add category:', error);
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to add category',
+        variant: 'destructive',
+      });
+      throw error;
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-[500px]">
@@ -191,10 +225,13 @@ export function InventoryPage() {
             Track and manage your household items.
           </p>
         </div>
-        <AddItemDialog
-          categories={categories.map(c => c.name)}
-          onAddItem={handleAddItem}
-        />
+        <div className="flex gap-2">
+          <AddCategoryDialog onAddCategory={handleAddCategory} />
+          <AddItemDialog
+            categories={categories.map(c => c.name)}
+            onAddItem={handleAddItem}
+          />
+        </div>
       </div>
 
       {/* Alerts */}

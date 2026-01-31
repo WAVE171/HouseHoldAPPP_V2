@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Loader2, X } from 'lucide-react';
+import { Loader2, X, Camera, User } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Label } from '@/shared/components/ui/label';
@@ -48,6 +48,30 @@ export function EditChildDialog({ child, open, onOpenChange, onSave }: EditChild
   const [medicalConditions, setMedicalConditions] = useState<string[]>(child.medicalConditions || []);
   const [newAllergy, setNewAllergy] = useState('');
   const [newCondition, setNewCondition] = useState('');
+  const [photo, setPhoto] = useState<string | undefined>(child.photo);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handlePhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        alert('Photo must be less than 5MB');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPhoto(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleRemovePhoto = () => {
+    setPhoto(undefined);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
 
   const {
     register,
@@ -82,6 +106,7 @@ export function EditChildDialog({ child, open, onOpenChange, onSave }: EditChild
     });
     setAllergies(child.allergies || []);
     setMedicalConditions(child.medicalConditions || []);
+    setPhoto(child.photo);
   }, [child, reset]);
 
   const handleAddAllergy = () => {
@@ -112,6 +137,7 @@ export function EditChildDialog({ child, open, onOpenChange, onSave }: EditChild
       await onSave({
         ...child,
         ...data,
+        photo,
         allergies,
         medicalConditions,
         updatedAt: new Date().toISOString(),
@@ -134,6 +160,50 @@ export function EditChildDialog({ child, open, onOpenChange, onSave }: EditChild
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          {/* Photo Upload */}
+          <div className="flex justify-center">
+            <div className="relative">
+              <div
+                className="w-24 h-24 rounded-full bg-muted flex items-center justify-center overflow-hidden border-2 border-dashed border-muted-foreground/25 cursor-pointer hover:border-primary/50 transition-colors"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                {photo ? (
+                  <img src={photo} alt="Child" className="w-full h-full object-cover" />
+                ) : (
+                  <User className="w-10 h-10 text-muted-foreground" />
+                )}
+              </div>
+              {photo ? (
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="icon"
+                  className="absolute -top-1 -right-1 h-6 w-6 rounded-full"
+                  onClick={handleRemovePhoto}
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="icon"
+                  className="absolute -bottom-1 -right-1 h-6 w-6 rounded-full"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <Camera className="h-3 w-3" />
+                </Button>
+              )}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handlePhotoChange}
+                className="hidden"
+              />
+            </div>
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="firstName">Primeiro Nome</Label>

@@ -14,6 +14,9 @@ interface FinanceSummaryCardsProps {
 
 export function FinanceSummaryCards({ summary }: FinanceSummaryCardsProps) {
   const netIncome = summary.totalIncome - summary.totalExpenses;
+  const savingsRate = summary.totalIncome > 0
+    ? ((summary.totalIncome - summary.totalExpenses) / summary.totalIncome) * 100
+    : 0;
 
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -53,7 +56,7 @@ export function FinanceSummaryCards({ summary }: FinanceSummaryCardsProps) {
             {formatCurrency(netIncome)}
           </div>
           <p className="text-xs text-muted-foreground">
-            {summary.savingsRate.toFixed(1)}% taxa de poupança
+            {savingsRate.toFixed(1)}% taxa de poupança
           </p>
         </CardContent>
       </Card>

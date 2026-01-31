@@ -3,6 +3,8 @@ import { ChildCard } from '../components/ChildCard';
 import { ChildDetails } from '../components/ChildDetails';
 import { AddChildDialog } from '../components/AddChildDialog';
 import { EditChildDialog } from '../components/EditChildDialog';
+import { useToast } from '@/shared/hooks/use-toast';
+import { kidsApi } from '@/shared/api';
 import type {
   Child,
   ChildSchool,
@@ -19,7 +21,6 @@ import type {
   GrowthRecord,
 } from '../types/kids.types';
 import {
-  mockChildren,
   mockSchools,
   mockTeachers,
   mockHomework,
@@ -32,13 +33,11 @@ import {
   mockMilestones,
   mockChores,
   mockGrowthRecords,
-  addChild,
-  deleteChild,
   toggleChore,
-  updateChild,
 } from '@/mocks/kids';
 
 export function KidsPage() {
+  const { toast } = useToast();
   const [children, setChildren] = useState<Child[]>([]);
   const [schools, setSchools] = useState<ChildSchool[]>([]);
   const [teachers, setTeachers] = useState<ChildTeacher[]>([]);
@@ -56,10 +55,14 @@ export function KidsPage() {
   const [editingChild, setEditingChild] = useState<Child | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    // Load mock data
-    setTimeout(() => {
-      setChildren([...mockChildren]);
+  const loadData = async () => {
+    setIsLoading(true);
+    try {
+      // Load children from real API
+      const childrenData = await kidsApi.getChildren();
+      setChildren(childrenData);
+
+      // Load related data from mocks (no backend endpoints yet)
       setSchools([...mockSchools]);
       setTeachers([...mockTeachers]);
       setHomework([...mockHomework]);
@@ -72,13 +75,50 @@ export function KidsPage() {
       setMilestones([...mockMilestones]);
       setChores([...mockChores]);
       setGrowthRecords([...mockGrowthRecords]);
+    } catch (error) {
+      console.error('Failed to load kids data:', error);
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to load kids data',
+        variant: 'destructive',
+      });
+      // Set empty children on error
+      setChildren([]);
+    } finally {
       setIsLoading(false);
-    }, 300);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
   }, []);
 
   const handleAddChild = async (childData: Omit<Child, 'id' | 'createdAt' | 'updatedAt'>) => {
-    const newChild = await addChild(childData);
-    setChildren(prev => [...prev, newChild]);
+    try {
+      const newChild = await kidsApi.createChild({
+        firstName: childData.firstName,
+        lastName: childData.lastName,
+        nickname: childData.nickname,
+        photo: childData.photo,
+        dateOfBirth: childData.dateOfBirth,
+        gender: childData.gender,
+        bloodType: childData.bloodType,
+        allergies: childData.allergies,
+        medicalConditions: childData.medicalConditions,
+      });
+      setChildren(prev => [...prev, newChild]);
+      toast({
+        title: 'Success',
+        description: `${newChild.firstName} has been added`,
+      });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to add child',
+        variant: 'destructive',
+      });
+      throw error;
+    }
   };
 
   const handleEditChild = (child: Child) => {
@@ -86,19 +126,54 @@ export function KidsPage() {
   };
 
   const handleSaveChild = async (updatedChild: Child) => {
-    const saved = await updateChild(updatedChild.id, updatedChild);
-    setChildren(prev => prev.map(c => c.id === saved.id ? saved : c));
-    if (selectedChild?.id === saved.id) {
-      setSelectedChild(saved);
+    try {
+      const saved = await kidsApi.updateChild(updatedChild.id, {
+        firstName: updatedChild.firstName,
+        lastName: updatedChild.lastName,
+        nickname: updatedChild.nickname,
+        photo: updatedChild.photo,
+        dateOfBirth: updatedChild.dateOfBirth,
+        gender: updatedChild.gender,
+        bloodType: updatedChild.bloodType,
+        allergies: updatedChild.allergies,
+        medicalConditions: updatedChild.medicalConditions,
+      });
+      setChildren(prev => prev.map(c => c.id === saved.id ? saved : c));
+      if (selectedChild?.id === saved.id) {
+        setSelectedChild(saved);
+      }
+      toast({
+        title: 'Success',
+        description: `${saved.firstName}'s information has been updated`,
+      });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to update child',
+        variant: 'destructive',
+      });
+      throw error;
     }
   };
 
   const handleDeleteChild = async (child: Child) => {
     if (window.confirm(`Are you sure you want to remove ${child.firstName}?`)) {
-      await deleteChild(child.id);
-      setChildren(prev => prev.filter(c => c.id !== child.id));
-      if (selectedChild?.id === child.id) {
-        setSelectedChild(null);
+      try {
+        await kidsApi.deleteChild(child.id);
+        setChildren(prev => prev.filter(c => c.id !== child.id));
+        if (selectedChild?.id === child.id) {
+          setSelectedChild(null);
+        }
+        toast({
+          title: 'Success',
+          description: `${child.firstName} has been removed`,
+        });
+      } catch (error) {
+        toast({
+          title: 'Error',
+          description: error instanceof Error ? error.message : 'Failed to delete child',
+          variant: 'destructive',
+        });
       }
     }
   };
