@@ -23,7 +23,7 @@ import {
   AuditLogQueryDto,
   CreateAuditLogDto,
   CreateHouseholdDto,
-  UpdateHouseholdDto,
+  AdminUpdateHouseholdDto,
   HouseholdsQueryDto,
   AssignHouseholdAdminDto,
 } from './dto/admin.dto';
@@ -167,7 +167,7 @@ export class AdminController {
   @ApiOperation({ summary: 'Update household (Super Admin only)' })
   updateHousehold(
     @Param('householdId') householdId: string,
-    @Body() dto: UpdateHouseholdDto,
+    @Body() dto: AdminUpdateHouseholdDto,
   ) {
     return this.adminService.updateHouseholdById(householdId, dto);
   }

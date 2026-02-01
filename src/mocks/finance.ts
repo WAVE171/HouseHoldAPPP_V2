@@ -89,9 +89,8 @@ export async function getFinanceSummary(): Promise<FinanceSummary> {
   return {
     totalIncome: 0,
     totalExpenses: 0,
-    totalBudget: 0,
-    totalSpent: 0,
-    savingsRate: 0,
+    balance: 0,
+    budgetRemaining: 0,
     upcomingBills: 0,
   };
 }

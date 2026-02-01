@@ -11,11 +11,10 @@ export const mockHouseholds: SystemHousehold[] = [];
 export const mockAuditLogs: AuditLog[] = [];
 export const mockStats: SystemStats = {
   totalUsers: 0,
-  activeUsers: 0,
   totalHouseholds: 0,
-  activeHouseholds: 0,
-  newUsersThisMonth: 0,
-  newHouseholdsThisMonth: 0,
+  totalTasks: 0,
+  totalTransactions: 0,
+  activeUsersLast24h: 0,
 };
 
 export async function getAdminUsers(): Promise<SystemUser[]> {
@@ -34,7 +33,7 @@ export async function getSystemStats(): Promise<SystemStats> {
   return mockStats;
 }
 
-export async function updateUserStatus(_id: string, _status: SystemUser['status']): Promise<SystemUser> {
+export async function updateUserStatus(_id: string, _isLocked: boolean): Promise<SystemUser> {
   throw new Error('API integration required');
 }
 

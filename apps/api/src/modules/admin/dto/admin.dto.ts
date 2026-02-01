@@ -41,7 +41,7 @@ export class CreateHouseholdDto {
   adminPassword?: string;
 }
 
-export class UpdateHouseholdDto {
+export class AdminUpdateHouseholdDto {
   @ApiPropertyOptional({ description: 'Household name' })
   @IsString()
   @IsOptional()

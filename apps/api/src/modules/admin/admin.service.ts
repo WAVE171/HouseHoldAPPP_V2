@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, ForbiddenException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { Role } from '@prisma/client';
-import { AuditLogQueryDto, CreateAuditLogDto, CreateHouseholdDto, UpdateHouseholdDto, HouseholdsQueryDto } from './dto/admin.dto';
+import { AuditLogQueryDto, CreateAuditLogDto, CreateHouseholdDto, AdminUpdateHouseholdDto, HouseholdsQueryDto } from './dto/admin.dto';
 import * as bcrypt from 'bcryptjs';
 
 @Injectable()
@@ -445,7 +445,7 @@ export class AdminService {
     };
   }
 
-  async updateHouseholdById(householdId: string, dto: UpdateHouseholdDto) {
+  async updateHouseholdById(householdId: string, dto: AdminUpdateHouseholdDto) {
     const household = await this.prisma.household.findUnique({
       where: { id: householdId },
     });
