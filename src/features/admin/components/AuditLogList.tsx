@@ -39,6 +39,22 @@ const actionColors: Record<string, string> = {
 };
 
 export function AuditLogList({ logs }: AuditLogListProps) {
+  if (logs.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Audit Logs</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col items-center justify-center h-[200px] text-muted-foreground">
+            <Shield className="h-12 w-12 mb-4" />
+            <p>No audit logs found</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card>
       <CardHeader>
@@ -50,6 +66,9 @@ export function AuditLogList({ logs }: AuditLogListProps) {
             {logs.map(log => {
               const Icon = actionIcons[log.action] || Shield;
               const colorClass = actionColors[log.action] || 'bg-gray-100 text-gray-700';
+              const displayDetails = log.details
+                ? (typeof log.details === 'string' ? log.details : JSON.stringify(log.details))
+                : null;
 
               return (
                 <div
@@ -61,7 +80,7 @@ export function AuditLogList({ logs }: AuditLogListProps) {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="font-medium">{log.userName}</span>
+                      <span className="font-medium">{log.userEmail}</span>
                       <Badge variant="outline" className="text-xs">
                         {log.action}
                       </Badge>
@@ -69,16 +88,16 @@ export function AuditLogList({ logs }: AuditLogListProps) {
                         {log.resource}
                       </Badge>
                     </div>
-                    {log.details && (
+                    {displayDetails && (
                       <p className="text-sm text-muted-foreground mb-1">
-                        {log.details}
+                        {displayDetails}
                       </p>
                     )}
                     <div className="flex items-center gap-4 text-xs text-muted-foreground">
                       <span>
-                        {format(new Date(log.timestamp), 'MMM d, yyyy h:mm:ss a')}
+                        {format(new Date(log.createdAt), 'MMM d, yyyy h:mm:ss a')}
                       </span>
-                      <span>IP: {log.ipAddress}</span>
+                      {log.ipAddress && <span>IP: {log.ipAddress}</span>}
                     </div>
                   </div>
                 </div>

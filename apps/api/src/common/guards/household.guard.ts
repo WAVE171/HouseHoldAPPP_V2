@@ -16,6 +16,15 @@ export class HouseholdGuard implements CanActivate {
       return false;
     }
 
+    // Super admins bypass household check - they can access any household
+    if (user.role === 'SUPER_ADMIN') {
+      // For super admins, householdId might come from query param or route param
+      const householdIdFromQuery = request.query?.householdId;
+      const householdIdFromParam = request.params?.householdId;
+      request.householdId = householdIdFromQuery || householdIdFromParam || user.householdId;
+      return true;
+    }
+
     // Check if user has a household
     if (!user.householdId) {
       throw new ForbiddenException(

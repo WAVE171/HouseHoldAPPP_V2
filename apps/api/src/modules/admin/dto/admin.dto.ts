@@ -1,9 +1,87 @@
-import { IsString, IsOptional, IsEnum, IsBoolean, IsDateString } from 'class-validator';
+import { IsString, IsOptional, IsEnum, IsBoolean, IsDateString, IsEmail, IsNumber, Min, Max } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Role } from '@prisma/client';
 
 export class UpdateUserRoleDto {
   @IsEnum(Role)
   role: Role;
+}
+
+// Household management DTOs
+export class CreateHouseholdDto {
+  @ApiProperty({ description: 'Household name' })
+  @IsString()
+  name: string;
+
+  @ApiPropertyOptional({ description: 'Household address' })
+  @IsString()
+  @IsOptional()
+  address?: string;
+
+  @ApiPropertyOptional({ description: 'Household phone' })
+  @IsString()
+  @IsOptional()
+  phone?: string;
+
+  @ApiProperty({ description: 'Admin email' })
+  @IsEmail()
+  adminEmail: string;
+
+  @ApiProperty({ description: 'Admin first name' })
+  @IsString()
+  adminFirstName: string;
+
+  @ApiProperty({ description: 'Admin last name' })
+  @IsString()
+  adminLastName: string;
+
+  @ApiPropertyOptional({ description: 'Admin password (generated if not provided)' })
+  @IsString()
+  @IsOptional()
+  adminPassword?: string;
+}
+
+export class UpdateHouseholdDto {
+  @ApiPropertyOptional({ description: 'Household name' })
+  @IsString()
+  @IsOptional()
+  name?: string;
+
+  @ApiPropertyOptional({ description: 'Household address' })
+  @IsString()
+  @IsOptional()
+  address?: string;
+
+  @ApiPropertyOptional({ description: 'Household phone' })
+  @IsString()
+  @IsOptional()
+  phone?: string;
+}
+
+export class AssignHouseholdAdminDto {
+  @ApiProperty({ description: 'User ID to assign as admin' })
+  @IsString()
+  userId: string;
+}
+
+export class HouseholdsQueryDto {
+  @ApiPropertyOptional({ description: 'Page number', default: 1 })
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  page?: number;
+
+  @ApiPropertyOptional({ description: 'Items per page', default: 20 })
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  @Max(100)
+  limit?: number;
+
+  @ApiPropertyOptional({ description: 'Search by name' })
+  @IsOptional()
+  @IsString()
+  search?: string;
 }
 
 export class UpdateUserStatusDto {

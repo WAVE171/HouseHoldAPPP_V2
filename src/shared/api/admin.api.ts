@@ -1,7 +1,7 @@
-import { apiClient } from './client';
+import { apiClient, getApiErrorMessage } from './client';
 
 // Types
-export type UserRole = 'ADMIN' | 'PARENT' | 'MEMBER' | 'STAFF';
+export type UserRole = 'SUPER_ADMIN' | 'ADMIN' | 'PARENT' | 'MEMBER' | 'STAFF';
 
 export interface AdminUser {
   id: string;
@@ -52,6 +52,62 @@ export interface HouseholdInfo {
   createdAt: string;
 }
 
+export interface SystemHousehold {
+  id: string;
+  name: string;
+  address?: string;
+  phone?: string;
+  adminEmail?: string;
+  memberCount: number;
+  createdAt: string;
+  stats: {
+    tasks: number;
+    transactions: number;
+    vehicles: number;
+    pets: number;
+    employees: number;
+    children: number;
+  };
+}
+
+export interface CreateHouseholdData {
+  name: string;
+  address?: string;
+  phone?: string;
+  adminEmail: string;
+  adminFirstName: string;
+  adminLastName: string;
+  adminPassword?: string;
+}
+
+export interface UpdateHouseholdData {
+  name?: string;
+  address?: string;
+  phone?: string;
+}
+
+export interface HouseholdMember {
+  id: string;
+  email: string;
+  firstName?: string;
+  lastName?: string;
+  role: UserRole;
+  avatar?: string;
+  lastLoginAt?: string;
+  joinedAt: string;
+}
+
+export interface HouseholdCreatedResponse {
+  id: string;
+  name: string;
+  address?: string;
+  phone?: string;
+  adminEmail: string;
+  adminName: string;
+  tempPassword?: string;
+  createdAt: string;
+}
+
 export interface AuditLog {
   id: string;
   userId: string;
@@ -59,7 +115,7 @@ export interface AuditLog {
   action: string;
   resource: string;
   resourceId?: string;
-  details?: Record<string, any>;
+  details?: Record<string, unknown>;
   ipAddress?: string;
   userAgent?: string;
   createdAt: string;
@@ -93,63 +149,235 @@ export interface SystemStats {
   activeUsersLast24h: number;
 }
 
+export interface PaginatedResponse<T> {
+  data: T[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+    hasMore: boolean;
+  };
+}
+
+export interface SystemWideUser {
+  id: string;
+  email: string;
+  role: UserRole;
+  firstName?: string;
+  lastName?: string;
+  avatar?: string;
+  householdId?: string;
+  householdName?: string;
+  lastLoginAt?: string;
+  createdAt: string;
+}
+
 // API functions
 export const adminApi = {
-  // User management
+  // ============================================
+  // HOUSEHOLD ADMIN ENDPOINTS
+  // ============================================
+
+  // User management (within household)
   getAllUsers: async (): Promise<AdminUser[]> => {
-    const response = await apiClient.get('/admin/users');
-    return response.data;
+    try {
+      const response = await apiClient.get('/admin/users');
+      return response.data;
+    } catch (error) {
+      throw new Error(getApiErrorMessage(error));
+    }
   },
 
   getUserById: async (userId: string): Promise<AdminUserDetails> => {
-    const response = await apiClient.get(`/admin/users/${userId}`);
-    return response.data;
+    try {
+      const response = await apiClient.get(`/admin/users/${userId}`);
+      return response.data;
+    } catch (error) {
+      throw new Error(getApiErrorMessage(error));
+    }
   },
 
   updateUserRole: async (userId: string, role: UserRole): Promise<AdminUser> => {
-    const response = await apiClient.patch(`/admin/users/${userId}/role`, { role });
-    return response.data;
+    try {
+      const response = await apiClient.patch(`/admin/users/${userId}/role`, { role });
+      return response.data;
+    } catch (error) {
+      throw new Error(getApiErrorMessage(error));
+    }
   },
 
   lockUser: async (userId: string, lockedUntil?: string): Promise<{ id: string; email: string; lockedUntil?: string }> => {
-    const response = await apiClient.post(`/admin/users/${userId}/lock`, { lockedUntil });
-    return response.data;
+    try {
+      const response = await apiClient.post(`/admin/users/${userId}/lock`, { lockedUntil });
+      return response.data;
+    } catch (error) {
+      throw new Error(getApiErrorMessage(error));
+    }
   },
 
   unlockUser: async (userId: string): Promise<{ id: string; email: string; lockedUntil: null }> => {
-    const response = await apiClient.post(`/admin/users/${userId}/unlock`);
-    return response.data;
+    try {
+      const response = await apiClient.post(`/admin/users/${userId}/unlock`);
+      return response.data;
+    } catch (error) {
+      throw new Error(getApiErrorMessage(error));
+    }
   },
 
   revokeUserSessions: async (userId: string): Promise<{ success: boolean; message: string }> => {
-    const response = await apiClient.post(`/admin/users/${userId}/revoke-sessions`);
-    return response.data;
+    try {
+      const response = await apiClient.post(`/admin/users/${userId}/revoke-sessions`);
+      return response.data;
+    } catch (error) {
+      throw new Error(getApiErrorMessage(error));
+    }
   },
 
-  // Household management
+  // Alias for getAllUsers for consistency
+  getUsers: async (): Promise<AdminUser[]> => {
+    try {
+      const response = await apiClient.get('/admin/users');
+      return response.data;
+    } catch (error) {
+      throw new Error(getApiErrorMessage(error));
+    }
+  },
+
+  // Household info (current household)
   getHouseholdInfo: async (): Promise<HouseholdInfo> => {
-    const response = await apiClient.get('/admin/household');
-    return response.data;
+    try {
+      const response = await apiClient.get('/admin/household');
+      return response.data;
+    } catch (error) {
+      throw new Error(getApiErrorMessage(error));
+    }
+  },
+
+  // Get household stats (for household admin - uses household info stats)
+  getHouseholdStats: async (): Promise<SystemStats> => {
+    try {
+      const response = await apiClient.get('/admin/household');
+      const info = response.data as HouseholdInfo;
+      // Transform household info into stats format
+      return {
+        totalUsers: info.memberCount,
+        totalHouseholds: 1,
+        totalTasks: info.stats.tasks,
+        totalTransactions: info.stats.transactions,
+        activeUsersLast24h: 0, // Not available for household-level
+      };
+    } catch (error) {
+      throw new Error(getApiErrorMessage(error));
+    }
   },
 
   // Audit logs
   getAuditLogs: async (query?: AuditLogQuery): Promise<AuditLogResponse> => {
-    const params: Record<string, string> = {};
-    if (query?.userId) params.userId = query.userId;
-    if (query?.action) params.action = query.action;
-    if (query?.resource) params.resource = query.resource;
-    if (query?.startDate) params.startDate = query.startDate;
-    if (query?.endDate) params.endDate = query.endDate;
-    if (query?.limit) params.limit = query.limit.toString();
-    if (query?.offset) params.offset = query.offset.toString();
+    try {
+      const params: Record<string, string> = {};
+      if (query?.userId) params.userId = query.userId;
+      if (query?.action) params.action = query.action;
+      if (query?.resource) params.resource = query.resource;
+      if (query?.startDate) params.startDate = query.startDate;
+      if (query?.endDate) params.endDate = query.endDate;
+      if (query?.limit) params.limit = query.limit.toString();
+      if (query?.offset) params.offset = query.offset.toString();
 
-    const response = await apiClient.get('/admin/audit-logs', { params });
-    return response.data;
+      const response = await apiClient.get('/admin/audit-logs', { params });
+      return response.data;
+    } catch (error) {
+      throw new Error(getApiErrorMessage(error));
+    }
   },
+
+  // ============================================
+  // SUPER ADMIN ONLY ENDPOINTS
+  // ============================================
 
   // System stats
   getSystemStats: async (): Promise<SystemStats> => {
-    const response = await apiClient.get('/admin/system-stats');
-    return response.data;
+    try {
+      const response = await apiClient.get('/admin/system/stats');
+      return response.data;
+    } catch (error) {
+      throw new Error(getApiErrorMessage(error));
+    }
+  },
+
+  // Household management (Super Admin)
+  getAllHouseholds: async (page = 1, limit = 20, search?: string): Promise<PaginatedResponse<SystemHousehold>> => {
+    try {
+      const params: Record<string, string | number> = { page, limit };
+      if (search) params.search = search;
+      const response = await apiClient.get('/admin/households', { params });
+      return response.data;
+    } catch (error) {
+      throw new Error(getApiErrorMessage(error));
+    }
+  },
+
+  createHousehold: async (data: CreateHouseholdData): Promise<HouseholdCreatedResponse> => {
+    try {
+      const response = await apiClient.post('/admin/households', data);
+      return response.data;
+    } catch (error) {
+      throw new Error(getApiErrorMessage(error));
+    }
+  },
+
+  getHouseholdById: async (householdId: string): Promise<HouseholdInfo> => {
+    try {
+      const response = await apiClient.get(`/admin/households/${householdId}`);
+      return response.data;
+    } catch (error) {
+      throw new Error(getApiErrorMessage(error));
+    }
+  },
+
+  updateHousehold: async (householdId: string, data: UpdateHouseholdData): Promise<SystemHousehold> => {
+    try {
+      const response = await apiClient.patch(`/admin/households/${householdId}`, data);
+      return response.data;
+    } catch (error) {
+      throw new Error(getApiErrorMessage(error));
+    }
+  },
+
+  deleteHousehold: async (householdId: string): Promise<{ success: boolean; message: string }> => {
+    try {
+      const response = await apiClient.delete(`/admin/households/${householdId}`);
+      return response.data;
+    } catch (error) {
+      throw new Error(getApiErrorMessage(error));
+    }
+  },
+
+  getHouseholdMembers: async (householdId: string): Promise<HouseholdMember[]> => {
+    try {
+      const response = await apiClient.get(`/admin/households/${householdId}/members`);
+      return response.data;
+    } catch (error) {
+      throw new Error(getApiErrorMessage(error));
+    }
+  },
+
+  assignHouseholdAdmin: async (householdId: string, userId: string): Promise<AdminUser> => {
+    try {
+      const response = await apiClient.post(`/admin/households/${householdId}/admin`, { userId });
+      return response.data;
+    } catch (error) {
+      throw new Error(getApiErrorMessage(error));
+    }
+  },
+
+  // System-wide users (Super Admin)
+  getAllUsersSystemWide: async (page = 1, limit = 50): Promise<PaginatedResponse<SystemWideUser>> => {
+    try {
+      const response = await apiClient.get('/admin/system/users', { params: { page, limit } });
+      return response.data;
+    } catch (error) {
+      throw new Error(getApiErrorMessage(error));
+    }
   },
 };
