@@ -114,6 +114,16 @@ export type {
   AuditLogQuery,
   AuditLogResponse,
   SystemStats,
+  EnhancedSystemStats,
+  HouseholdStatus,
+  SystemHousehold,
+  CreateHouseholdData,
+  UpdateHouseholdData,
+  HouseholdMember,
+  HouseholdCreatedResponse,
+  ImpersonationResponse,
+  ImpersonationSession,
+  ImpersonationHistoryEntry,
   UserRole,
 } from './admin.api';
 
