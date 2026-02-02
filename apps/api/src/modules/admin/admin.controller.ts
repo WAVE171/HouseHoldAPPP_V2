@@ -26,6 +26,7 @@ import {
   AdminUpdateHouseholdDto,
   HouseholdsQueryDto,
   AssignHouseholdAdminDto,
+  AdminCreateUserDto,
 } from './dto/admin.dto';
 
 @ApiTags('admin')
@@ -208,5 +209,14 @@ export class AdminController {
     @Query('limit') limit?: number,
   ) {
     return this.adminService.getAllUsersSystemWide(page, limit);
+  }
+
+  // Create user directly (Super Admin only)
+  @Post('system/users')
+  @UseGuards(SuperAdminGuard)
+  @ApiOperation({ summary: 'Create a new user directly (Super Admin only)' })
+  @ApiResponse({ status: 201, description: 'User created successfully' })
+  createUser(@Body() dto: AdminCreateUserDto) {
+    return this.adminService.createUser(dto);
   }
 }

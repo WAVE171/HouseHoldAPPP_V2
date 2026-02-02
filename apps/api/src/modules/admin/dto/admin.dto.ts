@@ -151,3 +151,37 @@ export class CreateAuditLogDto {
   @IsOptional()
   userAgent?: string;
 }
+
+// DTO for Super Admin to create users directly
+export class AdminCreateUserDto {
+  @ApiProperty({ description: 'User email address' })
+  @IsEmail()
+  email: string;
+
+  @ApiProperty({ description: 'User first name' })
+  @IsString()
+  firstName: string;
+
+  @ApiProperty({ description: 'User last name' })
+  @IsString()
+  lastName: string;
+
+  @ApiPropertyOptional({ description: 'User password (generated if not provided)' })
+  @IsString()
+  @IsOptional()
+  password?: string;
+
+  @ApiProperty({ description: 'User role', enum: ['SUPER_ADMIN', 'ADMIN', 'PARENT', 'MEMBER', 'STAFF'] })
+  @IsEnum(Role)
+  role: Role;
+
+  @ApiPropertyOptional({ description: 'Household ID to assign the user to (optional for SUPER_ADMIN users)' })
+  @IsString()
+  @IsOptional()
+  householdId?: string;
+
+  @ApiPropertyOptional({ description: 'User phone number' })
+  @IsString()
+  @IsOptional()
+  phone?: string;
+}

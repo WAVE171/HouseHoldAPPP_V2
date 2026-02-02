@@ -36,6 +36,8 @@
 
 | Email | Password | Role | Notes |
 |-------|----------|------|-------|
+| `superadmin@householdhero.com` | `SuperAdmin@2026` | SUPER_ADMIN | System administrator - manages all households |
+| `admin@household.com` | `admin123` | ADMIN | Household admin - seeded account |
 | `test@test.com` | `Test1234` | ADMIN | Test account with household |
 
 ---
@@ -247,6 +249,7 @@
 | GET | `/admin/households/:id/members` | Get household members | Yes | SUPER_ADMIN |
 | POST | `/admin/households/:id/admin` | Assign household admin | Yes | SUPER_ADMIN |
 | GET | `/admin/system/users` | Get all system users | Yes | SUPER_ADMIN |
+| POST | `/admin/system/users` | Create user directly | Yes | SUPER_ADMIN |
 
 ---
 

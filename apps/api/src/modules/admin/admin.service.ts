@@ -1,7 +1,7 @@
-import { Injectable, NotFoundException, ForbiddenException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, ConflictException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { Role } from '@prisma/client';
-import { AuditLogQueryDto, CreateAuditLogDto, CreateHouseholdDto, AdminUpdateHouseholdDto, HouseholdsQueryDto } from './dto/admin.dto';
+import { AuditLogQueryDto, CreateAuditLogDto, CreateHouseholdDto, AdminUpdateHouseholdDto, HouseholdsQueryDto, AdminCreateUserDto } from './dto/admin.dto';
 import * as bcrypt from 'bcryptjs';
 
 @Injectable()
@@ -610,6 +610,78 @@ export class AdminService {
         totalPages: Math.ceil(total / limit),
         hasMore: page * limit < total,
       },
+    };
+  }
+
+  // ============================================
+  // SUPER ADMIN - User Creation
+  // ============================================
+
+  async createUser(dto: AdminCreateUserDto) {
+    // Check if email already exists
+    const existingUser = await this.prisma.user.findUnique({
+      where: { email: dto.email },
+    });
+
+    if (existingUser) {
+      throw new ConflictException('User with this email already exists');
+    }
+
+    // Validate householdId requirement based on role
+    // SUPER_ADMIN users don't need a household
+    // All other roles require a household
+    if (dto.role !== 'SUPER_ADMIN' && !dto.householdId) {
+      throw new BadRequestException('Household ID is required for non-Super Admin users');
+    }
+
+    // If householdId is provided, verify it exists
+    if (dto.householdId) {
+      const household = await this.prisma.household.findUnique({
+        where: { id: dto.householdId },
+      });
+      if (!household) {
+        throw new NotFoundException('Household not found');
+      }
+    }
+
+    // Generate password if not provided
+    const password = dto.password || this.generateRandomPassword();
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Create user with profile in a transaction
+    const result = await this.prisma.$transaction(async (tx) => {
+      // Create the user
+      const user = await tx.user.create({
+        data: {
+          email: dto.email,
+          password: hashedPassword,
+          role: dto.role,
+        },
+      });
+
+      // Create the user profile - always create a profile, householdId is optional for SUPER_ADMIN
+      const profile = await tx.userProfile.create({
+        data: {
+          userId: user.id,
+          firstName: dto.firstName,
+          lastName: dto.lastName,
+          phone: dto.phone,
+          householdId: dto.householdId || undefined,
+        },
+      });
+
+      return { user, profile, tempPassword: dto.password ? undefined : password };
+    });
+
+    return {
+      id: result.user.id,
+      email: result.user.email,
+      firstName: dto.firstName,
+      lastName: dto.lastName,
+      role: result.user.role,
+      householdId: dto.householdId,
+      tempPassword: result.tempPassword, // Only returned if generated
+      createdAt: result.user.createdAt.toISOString(),
     };
   }
 
