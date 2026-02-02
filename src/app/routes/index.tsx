@@ -1,4 +1,5 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom';
+import { lazy, Suspense } from 'react';
 
 // Layouts
 import { AuthLayout, MainLayout } from '@/shared/components/layouts';
@@ -48,8 +49,8 @@ import { PetsPage } from '@/features/pets';
 // Kids
 import { KidsPage } from '@/features/kids';
 
-// Scanning
-import { ScanningPage } from '@/features/scanning';
+// Scanning - Lazy loaded due to heavy dependencies (@zxing/library, tesseract.js)
+const ScanningPage = lazy(() => import('@/features/scanning/pages/ScanningPage').then(module => ({ default: module.ScanningPage })));
 
 // Placeholder pages for other modules
 function PlaceholderPage({ title }: { title: string }) {
@@ -169,7 +170,16 @@ export const router = createBrowserRouter([
         path: '/scanning',
         element: (
           <ProtectedRoute roles={['ADMIN', 'PARENT', 'STAFF']}>
-            <ScanningPage />
+            <Suspense fallback={
+              <div className="flex h-[50vh] items-center justify-center">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+                  <p className="text-muted-foreground">Loading scanner...</p>
+                </div>
+              </div>
+            }>
+              <ScanningPage />
+            </Suspense>
           </ProtectedRoute>
         ),
       },
