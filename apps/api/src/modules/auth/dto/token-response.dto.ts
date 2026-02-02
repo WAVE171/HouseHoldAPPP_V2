@@ -24,6 +24,9 @@ export class UserResponseDto {
 
   @ApiProperty({ required: false })
   householdName?: string;
+
+  @ApiProperty({ required: false, enum: ['ACTIVE', 'SUSPENDED', 'INACTIVE'] })
+  householdStatus?: string;
 }
 
 export class TokenResponseDto {

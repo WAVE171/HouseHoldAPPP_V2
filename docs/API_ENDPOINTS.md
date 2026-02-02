@@ -250,6 +250,13 @@
 | POST | `/admin/households/:id/admin` | Assign household admin | Yes | SUPER_ADMIN |
 | GET | `/admin/system/users` | Get all system users | Yes | SUPER_ADMIN |
 | POST | `/admin/system/users` | Create user directly | Yes | SUPER_ADMIN |
+| POST | `/admin/system/users/:id/reset-password` | Reset user password | Yes | SUPER_ADMIN |
+| POST | `/admin/households/:id/suspend` | Suspend household | Yes | SUPER_ADMIN |
+| POST | `/admin/households/:id/unsuspend` | Unsuspend household | Yes | SUPER_ADMIN |
+| POST | `/admin/impersonate/:userId` | Start impersonating a user | Yes | SUPER_ADMIN |
+| POST | `/admin/impersonate/:sessionId/end` | End impersonation session | Yes | SUPER_ADMIN |
+| GET | `/admin/impersonate/sessions` | Get active impersonation sessions | Yes | SUPER_ADMIN |
+| GET | `/admin/impersonate/history` | Get impersonation history | Yes | SUPER_ADMIN |
 
 ---
 

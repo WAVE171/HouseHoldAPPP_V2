@@ -6,6 +6,8 @@ import {
   UserCheck,
   UserX,
   Shield,
+  KeyRound,
+  Eye,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
 import { Input } from '@/shared/components/ui/input';
@@ -33,7 +35,11 @@ import type { SystemUser, AdminUserRole } from '../types/admin.types';
 interface UserManagementProps {
   users: SystemUser[];
   onUpdateStatus: (userId: string, isLocked: boolean) => void;
+  onResetPassword?: (userId: string) => void;
+  onImpersonate?: (userId: string) => void;
   showHousehold?: boolean;
+  showResetPassword?: boolean;
+  showImpersonate?: boolean;
 }
 
 const roleColors: Record<AdminUserRole, string> = {
@@ -44,7 +50,15 @@ const roleColors: Record<AdminUserRole, string> = {
   STAFF: 'bg-orange-100 text-orange-700',
 };
 
-export function UserManagement({ users, onUpdateStatus, showHousehold = false }: UserManagementProps) {
+export function UserManagement({
+  users,
+  onUpdateStatus,
+  onResetPassword,
+  onImpersonate,
+  showHousehold = false,
+  showResetPassword = false,
+  showImpersonate = false,
+}: UserManagementProps) {
   const [searchQuery, setSearchQuery] = useState('');
 
   const filteredUsers = users.filter(user => {
@@ -154,6 +168,23 @@ export function UserManagement({ users, onUpdateStatus, showHousehold = false }:
                           <Shield className="h-4 w-4 mr-2" />
                           View Details
                         </DropdownMenuItem>
+                        {showResetPassword && onResetPassword && (
+                          <DropdownMenuItem
+                            onClick={() => onResetPassword(user.id)}
+                          >
+                            <KeyRound className="h-4 w-4 mr-2" />
+                            Reset Password
+                          </DropdownMenuItem>
+                        )}
+                        {showImpersonate && onImpersonate && user.role !== 'SUPER_ADMIN' && (
+                          <DropdownMenuItem
+                            onClick={() => onImpersonate(user.id)}
+                            className="text-purple-600"
+                          >
+                            <Eye className="h-4 w-4 mr-2" />
+                            Impersonate
+                          </DropdownMenuItem>
+                        )}
                         <DropdownMenuSeparator />
                         {user.isLocked ? (
                           <DropdownMenuItem

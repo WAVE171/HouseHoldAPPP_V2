@@ -59,6 +59,8 @@ export interface SystemHousehold {
   phone?: string;
   adminEmail?: string;
   memberCount: number;
+  status: HouseholdStatus;
+  lastActiveAt?: string;
   createdAt: string;
   stats: {
     tasks: number;
@@ -147,6 +149,85 @@ export interface SystemStats {
   totalTasks: number;
   totalTransactions: number;
   activeUsersLast24h: number;
+}
+
+// Enhanced System Stats for Super Admin Dashboard
+export interface EnhancedSystemStats {
+  // Core metrics
+  totalUsers: number;
+  totalHouseholds: number;
+  activeHouseholds: number;
+  suspendedHouseholds: number;
+  inactiveHouseholds: number;
+
+  // Activity metrics
+  activeUsersLast24h: number;
+  newUsersLast7Days: number;
+  newHouseholdsLast30Days: number;
+
+  // Subscription metrics
+  subscriptionsByPlan: {
+    FREE: number;
+    BASIC: number;
+    PREMIUM: number;
+    ENTERPRISE: number;
+  };
+}
+
+export type HouseholdStatus = 'ACTIVE' | 'SUSPENDED' | 'INACTIVE';
+
+// Impersonation Types
+export interface ImpersonationResponse {
+  impersonationToken: string;
+  expiresIn: number;
+  targetUser: {
+    id: string;
+    email: string;
+    role: UserRole;
+    firstName: string;
+    lastName: string;
+    householdId?: string;
+    householdName?: string;
+  };
+  impersonationLogId: string;
+}
+
+export interface ImpersonationSession {
+  id: string;
+  targetUser: {
+    id: string;
+    email: string;
+    role: UserRole;
+    name: string;
+  };
+  startedAt: string;
+  actionsCount: number;
+}
+
+export interface ImpersonationHistoryEntry {
+  id: string;
+  superAdmin: {
+    id: string;
+    email: string;
+  };
+  targetUser: {
+    id: string;
+    email: string;
+    name: string;
+  };
+  startedAt: string;
+  endedAt?: string;
+  actionsCount: number;
+  duration?: number;
+}
+
+export interface ImpersonationHistoryResponse {
+  data: ImpersonationHistoryEntry[];
+  meta: {
+    total: number;
+    limit: number;
+    offset: number;
+  };
 }
 
 export interface PaginatedResponse<T> {
@@ -375,6 +456,104 @@ export const adminApi = {
   getAllUsersSystemWide: async (page = 1, limit = 50): Promise<PaginatedResponse<SystemWideUser>> => {
     try {
       const response = await apiClient.get('/admin/system/users', { params: { page, limit } });
+      return response.data;
+    } catch (error) {
+      throw new Error(getApiErrorMessage(error));
+    }
+  },
+
+  // Enhanced system stats (Super Admin)
+  getEnhancedSystemStats: async (): Promise<EnhancedSystemStats> => {
+    try {
+      const response = await apiClient.get('/admin/system/stats');
+      return response.data;
+    } catch (error) {
+      throw new Error(getApiErrorMessage(error));
+    }
+  },
+
+  // Suspend household (Super Admin)
+  suspendHousehold: async (householdId: string, reason?: string): Promise<{ id: string; name: string; status: string; message: string }> => {
+    try {
+      const response = await apiClient.post(`/admin/households/${householdId}/suspend`, { reason });
+      return response.data;
+    } catch (error) {
+      throw new Error(getApiErrorMessage(error));
+    }
+  },
+
+  // Unsuspend household (Super Admin)
+  unsuspendHousehold: async (householdId: string): Promise<{ id: string; name: string; status: string; message: string }> => {
+    try {
+      const response = await apiClient.post(`/admin/households/${householdId}/unsuspend`);
+      return response.data;
+    } catch (error) {
+      throw new Error(getApiErrorMessage(error));
+    }
+  },
+
+  // Reset user password (Super Admin)
+  resetUserPassword: async (userId: string, newPassword?: string): Promise<{ userId: string; email: string; tempPassword?: string; message: string }> => {
+    try {
+      const response = await apiClient.post(`/admin/system/users/${userId}/reset-password`, { newPassword });
+      return response.data;
+    } catch (error) {
+      throw new Error(getApiErrorMessage(error));
+    }
+  },
+
+  // ============================================
+  // IMPERSONATION ENDPOINTS (Super Admin)
+  // ============================================
+
+  // Start impersonating a user
+  startImpersonation: async (userId: string): Promise<ImpersonationResponse> => {
+    try {
+      const response = await apiClient.post(`/admin/impersonate/${userId}`);
+      return response.data;
+    } catch (error) {
+      throw new Error(getApiErrorMessage(error));
+    }
+  },
+
+  // End impersonation session
+  endImpersonation: async (sessionId: string): Promise<{ message: string }> => {
+    try {
+      const response = await apiClient.post(`/admin/impersonate/${sessionId}/end`);
+      return response.data;
+    } catch (error) {
+      throw new Error(getApiErrorMessage(error));
+    }
+  },
+
+  // Get active impersonation sessions
+  getActiveSessions: async (): Promise<ImpersonationSession[]> => {
+    try {
+      const response = await apiClient.get('/admin/impersonate/sessions');
+      return response.data;
+    } catch (error) {
+      throw new Error(getApiErrorMessage(error));
+    }
+  },
+
+  // Get impersonation history
+  getImpersonationHistory: async (query?: {
+    superAdminId?: string;
+    targetUserId?: string;
+    startDate?: string;
+    endDate?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<ImpersonationHistoryResponse> => {
+    try {
+      const params: Record<string, string | number> = {};
+      if (query?.superAdminId) params.superAdminId = query.superAdminId;
+      if (query?.targetUserId) params.targetUserId = query.targetUserId;
+      if (query?.startDate) params.startDate = query.startDate;
+      if (query?.endDate) params.endDate = query.endDate;
+      if (query?.limit) params.limit = query.limit;
+      if (query?.offset) params.offset = query.offset;
+      const response = await apiClient.get('/admin/impersonate/history', { params });
       return response.data;
     } catch (error) {
       throw new Error(getApiErrorMessage(error));

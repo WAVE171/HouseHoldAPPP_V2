@@ -283,34 +283,88 @@ export class AdminService {
     };
   }
 
-  // System stats (for super admin)
+  // System stats (for super admin) - Enhanced operational metrics
   async getSystemStats() {
+    const now = new Date();
+    const last24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    const last7Days = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const last30Days = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
     const [
       totalUsers,
       totalHouseholds,
-      totalTasks,
-      totalTransactions,
-      recentLogins,
+      activeHouseholds,
+      suspendedHouseholds,
+      activeUsersLast24h,
+      newUsersLast7Days,
+      newHouseholdsLast30Days,
+      subscriptionStats,
     ] = await Promise.all([
+      // Total users count
       this.prisma.user.count(),
+      // Total households count
       this.prisma.household.count(),
-      this.prisma.task.count(),
-      this.prisma.transaction.count(),
-      this.prisma.user.count({
+      // Active households (any member logged in last 30 days)
+      this.prisma.household.count({
         where: {
-          lastLoginAt: {
-            gte: new Date(Date.now() - 24 * 60 * 60 * 1000),
-          },
+          OR: [
+            { lastActiveAt: { gte: last30Days } },
+            { members: { some: { user: { lastLoginAt: { gte: last30Days } } } } },
+          ],
         },
+      }),
+      // Suspended households
+      this.prisma.household.count({
+        where: { status: 'SUSPENDED' },
+      }),
+      // Active users in last 24h
+      this.prisma.user.count({
+        where: { lastLoginAt: { gte: last24h } },
+      }),
+      // New users in last 7 days
+      this.prisma.user.count({
+        where: { createdAt: { gte: last7Days } },
+      }),
+      // New households in last 30 days
+      this.prisma.household.count({
+        where: { createdAt: { gte: last30Days } },
+      }),
+      // Subscription stats by plan
+      this.prisma.subscription.groupBy({
+        by: ['plan'],
+        _count: { plan: true },
       }),
     ]);
 
+    // Format subscription stats
+    const subscriptionsByPlan: Record<string, number> = {
+      FREE: 0,
+      BASIC: 0,
+      PREMIUM: 0,
+      ENTERPRISE: 0,
+    };
+    subscriptionStats.forEach((s) => {
+      subscriptionsByPlan[s.plan] = s._count.plan;
+    });
+
     return {
+      // Core metrics
       totalUsers,
       totalHouseholds,
-      totalTasks,
-      totalTransactions,
-      activeUsersLast24h: recentLogins,
+      activeHouseholds,
+      suspendedHouseholds,
+      inactiveHouseholds: totalHouseholds - activeHouseholds - suspendedHouseholds,
+
+      // Activity metrics
+      activeUsersLast24h,
+      newUsersLast7Days,
+      newHouseholdsLast30Days,
+
+      // Subscription metrics
+      subscriptionsByPlan,
+
+      // Note: Super Admin should NOT see detailed household data
+      // Only aggregate counts for system health monitoring
     };
   }
 
@@ -492,6 +546,131 @@ export class AdminService {
     });
 
     return { success: true, message: 'Household deleted successfully' };
+  }
+
+  // Suspend household (read-only mode)
+  async suspendHousehold(householdId: string, reason?: string) {
+    const household = await this.prisma.household.findUnique({
+      where: { id: householdId },
+    });
+
+    if (!household) {
+      throw new NotFoundException('Household not found');
+    }
+
+    if (household.status === 'SUSPENDED') {
+      throw new BadRequestException('Household is already suspended');
+    }
+
+    const updated = await this.prisma.household.update({
+      where: { id: householdId },
+      data: { status: 'SUSPENDED' },
+    });
+
+    // Log the suspension
+    await this.createAuditLog({
+      userId: 'SYSTEM',
+      userEmail: 'system@householdhero.com',
+      action: 'SUSPEND',
+      resource: 'Household',
+      resourceId: householdId,
+      details: { reason },
+    });
+
+    return {
+      id: updated.id,
+      name: updated.name,
+      status: updated.status,
+      message: 'Household suspended. Members can view data but cannot make changes.',
+    };
+  }
+
+  // Unsuspend household
+  async unsuspendHousehold(householdId: string) {
+    const household = await this.prisma.household.findUnique({
+      where: { id: householdId },
+    });
+
+    if (!household) {
+      throw new NotFoundException('Household not found');
+    }
+
+    if (household.status !== 'SUSPENDED') {
+      throw new BadRequestException('Household is not suspended');
+    }
+
+    const updated = await this.prisma.household.update({
+      where: { id: householdId },
+      data: { status: 'ACTIVE' },
+    });
+
+    // Log the unsuspension
+    await this.createAuditLog({
+      userId: 'SYSTEM',
+      userEmail: 'system@householdhero.com',
+      action: 'UNSUSPEND',
+      resource: 'Household',
+      resourceId: householdId,
+    });
+
+    return {
+      id: updated.id,
+      name: updated.name,
+      status: updated.status,
+      message: 'Household reactivated. Members can now make changes.',
+    };
+  }
+
+  // Reset user password (Super Admin only)
+  async resetUserPassword(userId: string, newPassword?: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: { profile: true },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Prevent resetting Super Admin password via this method
+    if (user.role === 'SUPER_ADMIN') {
+      throw new ForbiddenException('Cannot reset Super Admin password via this method');
+    }
+
+    // Generate password if not provided
+    const password = newPassword || this.generateRandomPassword();
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        password: hashedPassword,
+        failedLoginAttempts: 0,
+        lockedUntil: null,
+      },
+    });
+
+    // Revoke all existing sessions
+    await this.prisma.session.deleteMany({ where: { userId } });
+
+    // Log the password reset
+    await this.createAuditLog({
+      userId: 'SYSTEM',
+      userEmail: 'system@householdhero.com',
+      action: 'PASSWORD_RESET',
+      resource: 'User',
+      resourceId: userId,
+      details: { targetEmail: user.email },
+    });
+
+    return {
+      userId: user.id,
+      email: user.email,
+      firstName: user.profile?.firstName,
+      lastName: user.profile?.lastName,
+      tempPassword: newPassword ? undefined : password, // Only return if generated
+      message: 'Password reset successfully. All sessions revoked.',
+    };
   }
 
   async getHouseholdMembers(householdId: string) {

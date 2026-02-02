@@ -20,7 +20,7 @@ import { ScanningModule } from './modules/scanning/scanning.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
-import { JwtAuthGuard } from './common/guards';
+import { JwtAuthGuard, SuspensionGuard } from './common/guards';
 import {
   appConfig,
   databaseConfig,
@@ -59,6 +59,10 @@ import {
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: SuspensionGuard,
     },
   ],
 })

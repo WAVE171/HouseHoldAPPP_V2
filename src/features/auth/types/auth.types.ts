@@ -1,4 +1,5 @@
 export type UserRole = 'SUPER_ADMIN' | 'ADMIN' | 'PARENT' | 'MEMBER' | 'STAFF';
+export type HouseholdStatus = 'ACTIVE' | 'SUSPENDED' | 'INACTIVE';
 
 export interface User {
   id: string;
@@ -9,6 +10,7 @@ export interface User {
   avatar?: string;
   phone?: string;
   householdId?: string;
+  householdStatus?: HouseholdStatus;
   createdAt: string;
   lastLoginAt?: string;
 }

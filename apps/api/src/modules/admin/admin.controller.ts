@@ -18,6 +18,7 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { Household } from '../../common/decorators/household.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { AdminService } from './admin.service';
+import { ImpersonationService } from './impersonation.service';
 import {
   UpdateUserRoleDto,
   AuditLogQueryDto,
@@ -34,7 +35,10 @@ import {
 @Controller('admin')
 @UseGuards(JwtAuthGuard)
 export class AdminController {
-  constructor(private readonly adminService: AdminService) {}
+  constructor(
+    private readonly adminService: AdminService,
+    private readonly impersonationService: ImpersonationService,
+  ) {}
 
   // ============================================
   // HOUSEHOLD ADMIN ENDPOINTS
@@ -218,5 +222,92 @@ export class AdminController {
   @ApiResponse({ status: 201, description: 'User created successfully' })
   createUser(@Body() dto: AdminCreateUserDto) {
     return this.adminService.createUser(dto);
+  }
+
+  // Suspend household (Super Admin only)
+  @Post('households/:householdId/suspend')
+  @UseGuards(SuperAdminGuard)
+  @ApiOperation({ summary: 'Suspend a household (read-only mode) (Super Admin only)' })
+  suspendHousehold(
+    @Param('householdId') householdId: string,
+    @Body('reason') reason?: string,
+  ) {
+    return this.adminService.suspendHousehold(householdId, reason);
+  }
+
+  // Unsuspend household (Super Admin only)
+  @Post('households/:householdId/unsuspend')
+  @UseGuards(SuperAdminGuard)
+  @ApiOperation({ summary: 'Unsuspend a household (Super Admin only)' })
+  unsuspendHousehold(@Param('householdId') householdId: string) {
+    return this.adminService.unsuspendHousehold(householdId);
+  }
+
+  // Reset user password (Super Admin only)
+  @Post('system/users/:userId/reset-password')
+  @UseGuards(SuperAdminGuard)
+  @ApiOperation({ summary: 'Reset user password (Super Admin only)' })
+  resetUserPassword(
+    @Param('userId') userId: string,
+    @Body('newPassword') newPassword?: string,
+  ) {
+    return this.adminService.resetUserPassword(userId, newPassword);
+  }
+
+  // ============================================
+  // IMPERSONATION ENDPOINTS (Super Admin only)
+  // ============================================
+
+  // Start impersonating a user
+  @Post('impersonate/:userId')
+  @UseGuards(SuperAdminGuard)
+  @ApiOperation({ summary: 'Start impersonating a user (Super Admin only)' })
+  @ApiResponse({ status: 200, description: 'Impersonation token generated' })
+  startImpersonation(
+    @CurrentUser('id') superAdminId: string,
+    @Param('userId') targetUserId: string,
+  ) {
+    return this.impersonationService.startImpersonation(superAdminId, targetUserId);
+  }
+
+  // End impersonation session
+  @Post('impersonate/:sessionId/end')
+  @UseGuards(SuperAdminGuard)
+  @ApiOperation({ summary: 'End impersonation session (Super Admin only)' })
+  endImpersonation(
+    @CurrentUser('id') superAdminId: string,
+    @Param('sessionId') sessionId: string,
+  ) {
+    return this.impersonationService.endImpersonation(sessionId, superAdminId);
+  }
+
+  // Get active impersonation sessions
+  @Get('impersonate/sessions')
+  @UseGuards(SuperAdminGuard)
+  @ApiOperation({ summary: 'Get active impersonation sessions (Super Admin only)' })
+  getActiveSessions(@CurrentUser('id') superAdminId: string) {
+    return this.impersonationService.getActiveSessions(superAdminId);
+  }
+
+  // Get impersonation history for audit
+  @Get('impersonate/history')
+  @UseGuards(SuperAdminGuard)
+  @ApiOperation({ summary: 'Get impersonation history (Super Admin only)' })
+  getImpersonationHistory(
+    @Query('superAdminId') superAdminId?: string,
+    @Query('targetUserId') targetUserId?: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+    @Query('limit') limit?: number,
+    @Query('offset') offset?: number,
+  ) {
+    return this.impersonationService.getImpersonationHistory({
+      superAdminId,
+      targetUserId,
+      startDate: startDate ? new Date(startDate) : undefined,
+      endDate: endDate ? new Date(endDate) : undefined,
+      limit: limit ? Number(limit) : undefined,
+      offset: offset ? Number(offset) : undefined,
+    });
   }
 }

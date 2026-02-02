@@ -5,6 +5,7 @@ export interface JwtPayload {
   email: string;
   role: string;
   householdId?: string;
+  householdStatus?: 'ACTIVE' | 'SUSPENDED' | 'INACTIVE';
 }
 
 // Extended type that maps 'id' to 'sub'

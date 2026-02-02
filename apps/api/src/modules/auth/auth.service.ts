@@ -29,7 +29,13 @@ export class AuthService {
       include: {
         profile: {
           include: {
-            household: true,
+            household: {
+              select: {
+                id: true,
+                name: true,
+                status: true,
+              },
+            },
           },
         },
       },
@@ -154,7 +160,13 @@ export class AuthService {
         include: {
           profile: {
             include: {
-              household: true,
+              household: {
+                select: {
+                  id: true,
+                  name: true,
+                  status: true,
+                },
+              },
             },
           },
         },
@@ -186,14 +198,17 @@ export class AuthService {
       lastName: string;
       avatar?: string | null;
       householdId?: string | null;
-      household?: { name: string } | null;
+      household?: { name: string; status?: string } | null;
     } | null;
   }): TokenResponseDto {
+    const householdStatus = user.profile?.household?.status || 'ACTIVE';
+
     const payload = {
       sub: user.id,
       email: user.email,
       role: user.role,
       householdId: user.profile?.householdId,
+      householdStatus: householdStatus,
     };
 
     const accessToken = this.jwtService.sign(payload, {
@@ -218,6 +233,7 @@ export class AuthService {
       avatar: user.profile?.avatar || undefined,
       householdId: user.profile?.householdId || undefined,
       householdName: user.profile?.household?.name || undefined,
+      householdStatus: householdStatus,
     };
 
     return {

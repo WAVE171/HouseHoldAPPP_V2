@@ -3,6 +3,22 @@ import { persist } from 'zustand/middleware';
 import type { User, LoginCredentials, RegisterData } from '../types/auth.types';
 import { authApi } from '@/shared/api';
 
+interface ImpersonationState {
+  isImpersonating: boolean;
+  originalToken: string | null;
+  originalUser: User | null;
+  impersonationLogId: string | null;
+  targetUser: {
+    id: string;
+    email: string;
+    role: string;
+    firstName: string;
+    lastName: string;
+    householdId?: string;
+    householdName?: string;
+  } | null;
+}
+
 interface AuthStore {
   // State
   user: User | null;
@@ -12,17 +28,28 @@ interface AuthStore {
   isLoading: boolean;
   error: string | null;
 
+  // Impersonation state
+  impersonation: ImpersonationState;
+
   // Actions
   login: (credentials: LoginCredentials) => Promise<void>;
   register: (data: RegisterData) => Promise<void>;
   logout: () => Promise<void>;
   clearError: () => void;
   setUser: (user: User) => void;
+
+  // Impersonation actions
+  startImpersonation: (
+    impersonationToken: string,
+    targetUser: ImpersonationState['targetUser'],
+    impersonationLogId: string
+  ) => void;
+  endImpersonation: () => void;
 }
 
 export const useAuthStore = create<AuthStore>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       // Initial state
       user: null,
       token: null,
@@ -30,6 +57,15 @@ export const useAuthStore = create<AuthStore>()(
       isAuthenticated: false,
       isLoading: false,
       error: null,
+
+      // Impersonation initial state
+      impersonation: {
+        isImpersonating: false,
+        originalToken: null,
+        originalUser: null,
+        impersonationLogId: null,
+        targetUser: null,
+      },
 
       // Login action
       login: async (credentials: LoginCredentials) => {
@@ -112,6 +148,48 @@ export const useAuthStore = create<AuthStore>()(
       setUser: (user: User) => {
         set({ user });
       },
+
+      // Start impersonation - save original state and switch to target user
+      startImpersonation: (impersonationToken, targetUser, impersonationLogId) => {
+        const currentState = get();
+        set({
+          impersonation: {
+            isImpersonating: true,
+            originalToken: currentState.token,
+            originalUser: currentState.user,
+            impersonationLogId,
+            targetUser,
+          },
+          token: impersonationToken,
+          user: targetUser ? {
+            id: targetUser.id,
+            email: targetUser.email,
+            role: targetUser.role as User['role'],
+            firstName: targetUser.firstName,
+            lastName: targetUser.lastName,
+            householdId: targetUser.householdId,
+            createdAt: new Date().toISOString(),
+          } : null,
+        });
+      },
+
+      // End impersonation - restore original state
+      endImpersonation: () => {
+        const { impersonation } = get();
+        if (impersonation.isImpersonating) {
+          set({
+            token: impersonation.originalToken,
+            user: impersonation.originalUser,
+            impersonation: {
+              isImpersonating: false,
+              originalToken: null,
+              originalUser: null,
+              impersonationLogId: null,
+              targetUser: null,
+            },
+          });
+        }
+      },
     }),
     {
       name: 'auth-storage', // localStorage key
@@ -120,6 +198,7 @@ export const useAuthStore = create<AuthStore>()(
         token: state.token,
         refreshToken: state.refreshToken,
         isAuthenticated: state.isAuthenticated,
+        impersonation: state.impersonation,
       }),
     }
   )

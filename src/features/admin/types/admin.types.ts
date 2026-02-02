@@ -24,6 +24,8 @@ export interface SystemHousehold {
   phone?: string;
   adminEmail?: string;
   memberCount: number;
+  status: HouseholdStatus;
+  lastActiveAt?: string;
   createdAt: string;
   stats: {
     tasks: number;
@@ -85,6 +87,7 @@ export interface AuditLogQuery {
   offset?: number;
 }
 
+// Legacy SystemStats for backwards compatibility
 export interface SystemStats {
   totalUsers: number;
   totalHouseholds: number;
@@ -92,6 +95,34 @@ export interface SystemStats {
   totalTransactions: number;
   activeUsersLast24h: number;
 }
+
+// Enhanced SystemStats for Super Admin dashboard
+export interface EnhancedSystemStats {
+  // Core metrics
+  totalUsers: number;
+  totalHouseholds: number;
+  activeHouseholds: number;
+  suspendedHouseholds: number;
+  inactiveHouseholds: number;
+
+  // Activity metrics
+  activeUsersLast24h: number;
+  newUsersLast7Days: number;
+  newHouseholdsLast30Days: number;
+
+  // Subscription metrics
+  subscriptionsByPlan: {
+    FREE: number;
+    BASIC: number;
+    PREMIUM: number;
+    ENTERPRISE: number;
+  };
+}
+
+export type HouseholdStatus = 'ACTIVE' | 'SUSPENDED' | 'INACTIVE';
+
+export type SubscriptionPlan = 'FREE' | 'BASIC' | 'PREMIUM' | 'ENTERPRISE';
+export type SubscriptionStatus = 'ACTIVE' | 'TRIAL' | 'PAST_DUE' | 'CANCELLED' | 'EXPIRED';
 
 export interface PaginatedResponse<T> {
   data: T[];

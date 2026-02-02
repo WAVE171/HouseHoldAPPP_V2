@@ -4,9 +4,11 @@ import { AdminStatsCards } from '../components/AdminStatsCards';
 import { UserManagement } from '../components/UserManagement';
 import { AuditLogList } from '../components/AuditLogList';
 import { HouseholdManagement } from '../components/HouseholdManagement';
+import { SystemDashboard } from '../components/SystemDashboard';
 import { useRole } from '@/shared/hooks/useRole';
 import { adminApi } from '@/shared/api/admin.api';
 import { useToast } from '@/shared/hooks/use-toast';
+import { useAuthStore } from '@/features/auth/store/authStore';
 import type {
   SystemUser,
   AuditLog,
@@ -16,6 +18,7 @@ import type {
 export function AdminPage() {
   const { isSuperAdmin, canViewAdminPanel } = useRole();
   const { toast } = useToast();
+  const { startImpersonation } = useAuthStore();
   const [users, setUsers] = useState<SystemUser[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [stats, setStats] = useState<SystemStats | null>(null);
@@ -28,11 +31,12 @@ export function AdminPage() {
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      // Fetch stats based on role
-      const statsData = isSuperAdmin
-        ? await adminApi.getSystemStats()
-        : await adminApi.getHouseholdStats();
-      setStats(statsData);
+      // For Super Admin, we use the SystemDashboard component which fetches its own data
+      // For Household Admin, we still need to fetch stats
+      if (!isSuperAdmin) {
+        const statsData = await adminApi.getHouseholdStats();
+        setStats(statsData);
+      }
 
       // Fetch users
       const usersData = isSuperAdmin
@@ -83,6 +87,45 @@ export function AdminPage() {
     }
   };
 
+  const handleResetPassword = async (userId: string) => {
+    try {
+      const result = await adminApi.resetUserPassword(userId);
+      toast({
+        title: 'Password Reset',
+        description: result.tempPassword
+          ? `New password: ${result.tempPassword}`
+          : 'Password has been reset',
+      });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to reset password',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleImpersonate = async (userId: string) => {
+    try {
+      const result = await adminApi.startImpersonation(userId);
+      startImpersonation(
+        result.impersonationToken,
+        result.targetUser,
+        result.impersonationLogId
+      );
+      toast({
+        title: 'Impersonation Started',
+        description: `You are now viewing as ${result.targetUser.firstName} ${result.targetUser.lastName}`,
+      });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to start impersonation',
+        variant: 'destructive',
+      });
+    }
+  };
+
   if (!canViewAdminPanel) {
     return (
       <div className="flex items-center justify-center h-[500px]">
@@ -91,7 +134,8 @@ export function AdminPage() {
     );
   }
 
-  if (isLoading || !stats) {
+  // Loading state only for household admin (Super Admin dashboard handles its own loading)
+  if (!isSuperAdmin && (isLoading || !stats)) {
     return (
       <div className="flex items-center justify-center h-[500px]">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
@@ -99,41 +143,79 @@ export function AdminPage() {
     );
   }
 
-  return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Admin Panel</h1>
-        <p className="text-muted-foreground">
-          {isSuperAdmin
-            ? 'System-wide administration and monitoring.'
-            : 'Household administration and monitoring.'}
-        </p>
-      </div>
+  // Super Admin View - System Management Focus
+  if (isSuperAdmin) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">System Administration</h1>
+          <p className="text-muted-foreground">
+            Platform management and monitoring. You are logged in as Super Admin.
+          </p>
+        </div>
 
-      {/* Stats */}
-      <AdminStatsCards stats={stats} />
-
-      {/* Main Content */}
-      <Tabs defaultValue={isSuperAdmin ? 'households' : 'users'} className="space-y-4">
-        <TabsList>
-          {isSuperAdmin && (
+        <Tabs defaultValue="dashboard" className="space-y-4">
+          <TabsList>
+            <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
             <TabsTrigger value="households">Households</TabsTrigger>
-          )}
-          <TabsTrigger value="users">Users</TabsTrigger>
-          <TabsTrigger value="audit">Audit Logs</TabsTrigger>
-        </TabsList>
+            <TabsTrigger value="users">Users</TabsTrigger>
+            <TabsTrigger value="audit">Audit Logs</TabsTrigger>
+          </TabsList>
 
-        {isSuperAdmin && (
+          <TabsContent value="dashboard">
+            <SystemDashboard />
+          </TabsContent>
+
           <TabsContent value="households">
             <HouseholdManagement />
           </TabsContent>
-        )}
+
+          <TabsContent value="users">
+            <UserManagement
+              users={users}
+              onUpdateStatus={handleUpdateUserStatus}
+              onResetPassword={handleResetPassword}
+              onImpersonate={handleImpersonate}
+              showHousehold={true}
+              showResetPassword={true}
+              showImpersonate={true}
+            />
+          </TabsContent>
+
+          <TabsContent value="audit">
+            <AuditLogList logs={auditLogs} />
+          </TabsContent>
+        </Tabs>
+      </div>
+    );
+  }
+
+  // Household Admin View
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">Household Admin</h1>
+        <p className="text-muted-foreground">
+          Manage your household settings and members.
+        </p>
+      </div>
+
+      {/* Stats for Household Admin */}
+      {stats && <AdminStatsCards stats={stats} />}
+
+      {/* Main Content */}
+      <Tabs defaultValue="users" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="users">Members</TabsTrigger>
+          <TabsTrigger value="audit">Activity Log</TabsTrigger>
+        </TabsList>
 
         <TabsContent value="users">
           <UserManagement
             users={users}
             onUpdateStatus={handleUpdateUserStatus}
-            showHousehold={isSuperAdmin}
+            showHousehold={false}
+            showResetPassword={false}
           />
         </TabsContent>
 

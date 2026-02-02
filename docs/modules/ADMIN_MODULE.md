@@ -2,7 +2,9 @@
 
 ## Overview
 
-The Admin module provides administrative capabilities for household management, including user management, role assignment, account locking, audit logging, and system statistics. Access is restricted to users with the ADMIN role.
+The Admin module provides comprehensive administrative capabilities at two levels:
+1. **Household Admin (ADMIN role)** - Manages users and settings within their household
+2. **Super Admin (SUPER_ADMIN role)** - Manages the entire platform, all households, and system operations
 
 ## Location
 
@@ -12,19 +14,92 @@ apps/api/src/modules/admin/
 │   └── admin.dto.ts
 ├── admin.controller.ts
 ├── admin.service.ts
+├── impersonation.service.ts    # NEW: User impersonation for support
 └── admin.module.ts
 ```
 
-## Authorization
+## Role Hierarchy
 
-All endpoints in this module require:
-- Valid JWT authentication
-- ADMIN role (enforced by `RolesGuard`)
-- Household membership
+| Role | Scope | Capabilities |
+|------|-------|--------------|
+| `SUPER_ADMIN` | Platform | Manage all households, system stats, impersonation |
+| `ADMIN` | Household | Manage household members, settings, audit logs |
+| `PARENT` | Household | Manage members, send invites |
+| `MEMBER` | Household | View and interact with data |
+| `STAFF` | Household | Limited employee access |
+
+---
+
+## Super Admin Features
+
+### System Dashboard
+
+Super Admins see platform-wide operational metrics:
+
+| Metric | Description |
+|--------|-------------|
+| Total Households | Count of all households on the platform |
+| Active Households | Households with login activity in last 30 days |
+| Total Users | Count of all registered users |
+| Active Users (24h) | Users who logged in within 24 hours |
+| New Signups (7 days) | New user registrations this week |
+| Suspended Households | Households currently in read-only mode |
+
+### Household Management
+
+Super Admins can:
+- View all households with summary information (no private data)
+- Create new households with initial admin
+- Suspend/unsuspend households (puts them in read-only mode)
+- Assign or change household administrators
+
+**Privacy Principle:** Super Admins see COUNTS, not CONTENT. They can see "15 tasks" but not "Buy groceries for mom's birthday".
+
+### User Impersonation
+
+For support purposes, Super Admins can temporarily impersonate any user:
+- Time-limited sessions (configurable, default 30 minutes)
+- All actions logged with impersonation flag
+- Visual banner shown during impersonation
+- Original session preserved and restored on end
+
+### Password Reset
+
+Super Admins can reset any user's password:
+- Generate temporary password
+- Force password change on next login
+
+---
+
+## Household Suspension System
+
+### Overview
+
+Suspended households operate in **read-only mode**:
+- Members can log in and view all their data
+- Cannot create, update, or delete anything
+- Shows suspension banner with support contact
+- Admin can view but not modify
+
+### Use Cases
+- Payment issues or billing disputes
+- Policy violations under review
+- Account security concerns
+- Compliance audits
+
+### Implementation
+
+**Database:** `Household.status` enum: `ACTIVE`, `SUSPENDED`, `INACTIVE`
+
+**Backend Guard:** `SuspensionGuard` checks household status before write operations
+
+**Frontend Banner:** `SuspensionBanner` component displays warning to suspended users
+
+---
 
 ## Endpoints
 
-### User Management
+### Household Admin Endpoints
 
 #### GET `/api/v1/admin/users`
 
@@ -56,55 +131,14 @@ Get all users in the household.
 
 Get detailed information about a specific user.
 
-**Response:**
-```json
-{
-  "data": {
-    "id": "clx...",
-    "email": "user@example.com",
-    "firstName": "John",
-    "lastName": "Doe",
-    "role": "MEMBER",
-    "avatar": "https://example.com/avatar.jpg",
-    "phone": "+1-555-123-4567",
-    "lastLoginAt": "2026-01-26T10:00:00.000Z",
-    "isLocked": false,
-    "lockedUntil": null,
-    "failedLoginAttempts": 0,
-    "twoFactorEnabled": true,
-    "createdAt": "2025-01-01T00:00:00.000Z",
-    "recentSessions": [
-      {
-        "id": "clx...",
-        "createdAt": "2026-01-26T10:00:00.000Z",
-        "expiresAt": "2026-02-02T10:00:00.000Z"
-      }
-    ]
-  }
-}
-```
-
 #### PATCH `/api/v1/admin/users/:id/role`
 
-Update a user's role.
+Update a user's role within the household.
 
 **Request Body:**
 ```json
 {
   "role": "PARENT"
-}
-```
-
-**Response:**
-```json
-{
-  "data": {
-    "id": "clx...",
-    "email": "user@example.com",
-    "role": "PARENT",
-    "firstName": "John",
-    "lastName": "Doe"
-  }
 }
 ```
 
@@ -119,51 +153,17 @@ Lock a user account.
 }
 ```
 
-**Response:**
-```json
-{
-  "data": {
-    "id": "clx...",
-    "email": "user@example.com",
-    "lockedUntil": "2026-01-27T00:00:00.000Z"
-  }
-}
-```
-
 #### POST `/api/v1/admin/users/:id/unlock`
 
 Unlock a user account.
-
-**Response:**
-```json
-{
-  "data": {
-    "id": "clx...",
-    "email": "user@example.com",
-    "lockedUntil": null
-  }
-}
-```
 
 #### POST `/api/v1/admin/users/:id/revoke-sessions`
 
 Revoke all active sessions for a user.
 
-**Response:**
-```json
-{
-  "data": {
-    "success": true,
-    "message": "All sessions revoked"
-  }
-}
-```
-
-### Household Management
-
 #### GET `/api/v1/admin/household`
 
-Get detailed household information.
+Get household stats (for Household Admin view).
 
 **Response:**
 ```json
@@ -171,22 +171,7 @@ Get detailed household information.
   "data": {
     "id": "clx...",
     "name": "Smith Family",
-    "address": "123 Main Street",
-    "phone": "+1-555-123-4567",
-    "creatorEmail": "admin@example.com",
     "memberCount": 4,
-    "members": [
-      {
-        "firstName": "John",
-        "lastName": "Smith",
-        "role": "ADMIN"
-      },
-      {
-        "firstName": "Jane",
-        "lastName": "Smith",
-        "role": "PARENT"
-      }
-    ],
     "stats": {
       "tasks": 45,
       "events": 12,
@@ -196,259 +181,439 @@ Get detailed household information.
       "pets": 3,
       "employees": 2,
       "recipes": 25
-    },
-    "createdAt": "2025-01-01T00:00:00.000Z"
-  }
-}
-```
-
-### Audit Logs
-
-#### GET `/api/v1/admin/audit-logs`
-
-Get audit logs with filtering and pagination.
-
-**Query Parameters:**
-- `userId` - Filter by user ID
-- `action` - Filter by action type
-- `resource` - Filter by resource type
-- `startDate` - Filter from date
-- `endDate` - Filter to date
-- `limit` - Number of records (default: 50)
-- `offset` - Skip records for pagination
-
-**Response:**
-```json
-{
-  "data": {
-    "data": [
-      {
-        "id": "clx...",
-        "userId": "clx...",
-        "userEmail": "user@example.com",
-        "action": "UPDATE",
-        "resource": "USER",
-        "resourceId": "clx...",
-        "details": { "field": "role", "oldValue": "MEMBER", "newValue": "PARENT" },
-        "ipAddress": "192.168.1.1",
-        "userAgent": "Mozilla/5.0...",
-        "createdAt": "2026-01-26T10:00:00.000Z"
-      }
-    ],
-    "meta": {
-      "total": 100,
-      "limit": 50,
-      "offset": 0,
-      "hasMore": true
     }
   }
 }
 ```
 
-#### POST `/api/v1/admin/audit-logs`
+#### GET `/api/v1/admin/audit-logs`
 
-Create an audit log entry.
+Get audit logs with filtering.
 
-**Request Body:**
-```json
-{
-  "userId": "clx...",
-  "userEmail": "user@example.com",
-  "action": "CREATE",
-  "resource": "TASK",
-  "resourceId": "clx...",
-  "details": { "title": "New Task" },
-  "ipAddress": "192.168.1.1",
-  "userAgent": "Mozilla/5.0..."
-}
-```
+**Query Parameters:**
+- `userId` - Filter by user ID
+- `action` - Filter by action type (CREATE, UPDATE, DELETE, LOGIN, etc.)
+- `resource` - Filter by resource type
+- `startDate`, `endDate` - Date range filter
+- `limit`, `offset` - Pagination
 
-### System Statistics
+---
 
-#### GET `/api/v1/admin/system-stats`
+### Super Admin Endpoints
 
-Get system-wide statistics (for super admin view).
+#### GET `/api/v1/admin/system/stats`
+
+Get platform-wide statistics.
 
 **Response:**
 ```json
 {
   "data": {
-    "totalUsers": 150,
-    "totalHouseholds": 45,
-    "totalTasks": 1250,
-    "totalTransactions": 3500,
-    "activeUsersLast24h": 42
+    "totalHouseholds": 150,
+    "activeHouseholds": 120,
+    "suspendedHouseholds": 5,
+    "totalUsers": 450,
+    "activeUsersLast24h": 85,
+    "newUsersLast7Days": 23,
+    "newHouseholdsLast30Days": 12
   }
 }
 ```
 
-## Enums
+#### GET `/api/v1/admin/households`
 
-### UserRole
+Get all households (paginated).
 
-```typescript
-enum UserRole {
-  ADMIN = 'ADMIN',
-  PARENT = 'PARENT',
-  MEMBER = 'MEMBER',
-  STAFF = 'STAFF'
+**Query Parameters:**
+- `page`, `limit` - Pagination
+- `search` - Search by name or admin email
+- `status` - Filter by ACTIVE, SUSPENDED, INACTIVE
+
+**Response:**
+```json
+{
+  "data": [
+    {
+      "id": "clx...",
+      "name": "Smith Family",
+      "adminEmail": "admin@smith.com",
+      "memberCount": 4,
+      "status": "ACTIVE",
+      "createdAt": "2025-01-01T00:00:00.000Z",
+      "lastActiveAt": "2026-02-01T10:00:00.000Z"
+    }
+  ],
+  "meta": {
+    "total": 150,
+    "page": 1,
+    "limit": 20,
+    "totalPages": 8
+  }
 }
 ```
 
-## Data Models
+#### POST `/api/v1/admin/households`
 
-### AdminUser
+Create a new household with initial admin.
 
-```typescript
-interface AdminUser {
-  id: string;
-  email: string;
-  firstName?: string;
-  lastName?: string;
-  role: UserRole;
-  avatar?: string;
-  lastLoginAt?: string;
-  isLocked: boolean;
-  lockedUntil?: string;
-  failedLoginAttempts: number;
-  twoFactorEnabled: boolean;
-  createdAt: string;
+**Request Body:**
+```json
+{
+  "name": "New Family",
+  "address": "123 Main St",
+  "adminEmail": "admin@newfamily.com",
+  "adminFirstName": "John",
+  "adminLastName": "New",
+  "adminPassword": "SecurePassword123"
 }
 ```
 
-### AuditLog
+#### GET `/api/v1/admin/households/:id`
 
-```typescript
-interface AuditLog {
-  id: string;
-  userId: string;
-  userEmail: string;
-  action: string;
-  resource: string;
-  resourceId?: string;
-  details?: Record<string, any>;
-  ipAddress?: string;
-  userAgent?: string;
-  createdAt: string;
+Get household details (summary only, no private content).
+
+#### PATCH `/api/v1/admin/households/:id`
+
+Update household information.
+
+#### POST `/api/v1/admin/households/:id/suspend`
+
+Suspend a household (puts in read-only mode).
+
+**Request Body:**
+```json
+{
+  "reason": "Payment overdue"
 }
 ```
 
-### HouseholdInfo
-
-```typescript
-interface HouseholdInfo {
-  id: string;
-  name: string;
-  address?: string;
-  phone?: string;
-  creatorEmail: string;
-  memberCount: number;
-  members: { firstName: string; lastName: string; role: UserRole }[];
-  stats: {
-    tasks: number;
-    events: number;
-    inventoryItems: number;
-    transactions: number;
-    vehicles: number;
-    pets: number;
-    employees: number;
-    recipes: number;
-  };
-  createdAt: string;
+**Response:**
+```json
+{
+  "data": {
+    "id": "clx...",
+    "status": "SUSPENDED",
+    "suspendedAt": "2026-02-02T10:00:00.000Z",
+    "suspendedReason": "Payment overdue"
+  }
 }
 ```
+
+#### POST `/api/v1/admin/households/:id/unsuspend`
+
+Reactivate a suspended household.
+
+#### GET `/api/v1/admin/system/users`
+
+Get all users across all households.
+
+**Query Parameters:**
+- `page`, `limit` - Pagination
+- `search` - Search by name or email
+- `role` - Filter by role
+- `householdId` - Filter by household
+
+#### POST `/api/v1/admin/system/users/:id/reset-password`
+
+Reset a user's password.
+
+**Request Body:**
+```json
+{
+  "newPassword": "TempPassword123"
+}
+```
+
+**Response:**
+```json
+{
+  "data": {
+    "userId": "clx...",
+    "email": "user@example.com",
+    "tempPassword": "TempPassword123",
+    "message": "Password reset successfully. User must change on next login."
+  }
+}
+```
+
+---
+
+### Impersonation Endpoints
+
+#### POST `/api/v1/admin/impersonate/:userId`
+
+Start impersonating a user.
+
+**Response:**
+```json
+{
+  "data": {
+    "impersonationToken": "eyJ...",
+    "expiresIn": 1800,
+    "targetUser": {
+      "id": "clx...",
+      "email": "user@example.com",
+      "role": "MEMBER",
+      "firstName": "John",
+      "lastName": "Doe",
+      "householdId": "clx...",
+      "householdName": "Smith Family"
+    },
+    "impersonationLogId": "clx..."
+  }
+}
+```
+
+#### POST `/api/v1/admin/impersonate/:sessionId/end`
+
+End an impersonation session.
+
+**Response:**
+```json
+{
+  "data": {
+    "message": "Impersonation ended successfully",
+    "duration": 450,
+    "actionsCount": 5
+  }
+}
+```
+
+#### GET `/api/v1/admin/impersonate/sessions`
+
+Get currently active impersonation sessions.
+
+#### GET `/api/v1/admin/impersonate/history`
+
+Get impersonation history with filters.
+
+**Query Parameters:**
+- `superAdminId` - Filter by Super Admin
+- `targetUserId` - Filter by impersonated user
+- `startDate`, `endDate` - Date range
+- `limit`, `offset` - Pagination
+
+---
+
+## Frontend Components
+
+### Super Admin View
+
+```
+src/features/admin/
+├── pages/
+│   └── AdminPage.tsx              # Main admin page with role-based views
+├── components/
+│   ├── SystemDashboard.tsx        # Platform-wide metrics
+│   ├── HouseholdManagement.tsx    # Household list and management
+│   ├── UserManagement.tsx         # User list with actions
+│   ├── AuditLogList.tsx           # Audit log viewer
+│   ├── ImpersonationBanner.tsx    # Shows during impersonation
+│   └── SuspensionBanner.tsx       # Shows for suspended households
+└── types/
+    └── admin.types.ts             # TypeScript types
+```
+
+### ImpersonationBanner
+
+Displayed at top of screen during impersonation:
+- Shows target user name, email, role
+- "End Impersonation" button
+- Visual indicator (purple/warning color)
+
+### SuspensionBanner
+
+Displayed for suspended household members:
+- Warning message about read-only mode
+- Contact support link
+- Cannot be dismissed
+
+---
+
+## Auth Store Integration
+
+The auth store (`src/features/auth/store/authStore.ts`) includes impersonation state:
+
+```typescript
+interface ImpersonationState {
+  isImpersonating: boolean;
+  originalToken: string | null;
+  originalUser: User | null;
+  impersonationLogId: string | null;
+  targetUser: {
+    id: string;
+    email: string;
+    role: string;
+    firstName: string;
+    lastName: string;
+    householdId?: string;
+    householdName?: string;
+  } | null;
+}
+
+// Actions
+startImpersonation(token, targetUser, logId): void
+endImpersonation(): void
+```
+
+---
+
+## Database Models
+
+### ImpersonationLog
+
+```prisma
+model ImpersonationLog {
+  id                String    @id @default(cuid())
+  superAdminId      String
+  superAdmin        User      @relation("ImpersonationBySuperAdmin", ...)
+  targetUserId      String
+  targetUser        User      @relation("ImpersonatedUser", ...)
+  targetHouseholdId String?
+  startedAt         DateTime  @default(now())
+  endedAt           DateTime?
+  reason            String?
+  actionsCount      Int       @default(0)
+
+  @@index([superAdminId])
+  @@index([targetUserId])
+  @@index([startedAt])
+  @@map("impersonation_logs")
+}
+```
+
+### Household Status
+
+```prisma
+model Household {
+  // ... existing fields
+  status        HouseholdStatus @default(ACTIVE)
+  suspendedAt   DateTime?
+  suspendedBy   String?
+  suspendReason String?
+}
+
+enum HouseholdStatus {
+  ACTIVE
+  SUSPENDED
+  INACTIVE
+}
+```
+
+---
 
 ## Service Methods
 
+### AdminService
+
 ```typescript
 class AdminService {
-  // User management
+  // Household Admin Methods
   async getAllUsers(householdId: string): Promise<AdminUser[]>
   async getUserById(userId: string): Promise<AdminUserDetails>
   async updateUserRole(adminId: string, userId: string, newRole: Role): Promise<AdminUser>
-  async lockUser(userId: string, lockedUntil?: Date): Promise<{ id: string; email: string; lockedUntil: string }>
-  async unlockUser(userId: string): Promise<{ id: string; email: string; lockedUntil: null }>
-  async revokeUserSessions(userId: string): Promise<{ success: boolean; message: string }>
+  async lockUser(userId: string, lockedUntil?: Date): Promise<User>
+  async unlockUser(userId: string): Promise<User>
+  async revokeUserSessions(userId: string): Promise<void>
+  async getHouseholdStats(householdId: string): Promise<HouseholdStats>
+  async getAuditLogs(query: AuditLogQueryDto): Promise<PaginatedResponse<AuditLog>>
 
-  // Household management
-  async getHouseholdInfo(householdId: string): Promise<HouseholdInfo>
-
-  // Audit logs
-  async getAuditLogs(query: AuditLogQueryDto): Promise<AuditLogResponse>
-  async createAuditLog(dto: CreateAuditLogDto): Promise<AuditLog>
-
-  // System stats
+  // Super Admin Methods
   async getSystemStats(): Promise<SystemStats>
+  async getAllHouseholds(query: HouseholdQueryDto): Promise<PaginatedResponse<Household>>
+  async createHousehold(dto: CreateHouseholdDto): Promise<Household>
+  async getHouseholdById(id: string): Promise<HouseholdDetails>
+  async updateHousehold(id: string, dto: UpdateHouseholdDto): Promise<Household>
+  async suspendHousehold(id: string, reason?: string): Promise<Household>
+  async unsuspendHousehold(id: string): Promise<Household>
+  async getAllUsersSystemWide(query: UserQueryDto): Promise<PaginatedResponse<User>>
+  async resetUserPassword(userId: string, newPassword?: string): Promise<PasswordResetResult>
 }
 ```
 
-## Frontend Integration
+### ImpersonationService
 
 ```typescript
-// src/shared/api/admin.api.ts
-export const adminApi = {
-  // User management
-  getAllUsers: async () => {
-    const response = await apiClient.get('/admin/users');
-    return response.data;
-  },
-
-  getUserById: async (userId: string) => {
-    const response = await apiClient.get(`/admin/users/${userId}`);
-    return response.data;
-  },
-
-  updateUserRole: async (userId: string, role: UserRole) => {
-    const response = await apiClient.patch(`/admin/users/${userId}/role`, { role });
-    return response.data;
-  },
-
-  lockUser: async (userId: string, lockedUntil?: string) => {
-    const response = await apiClient.post(`/admin/users/${userId}/lock`, { lockedUntil });
-    return response.data;
-  },
-
-  unlockUser: async (userId: string) => {
-    const response = await apiClient.post(`/admin/users/${userId}/unlock`);
-    return response.data;
-  },
-
-  revokeUserSessions: async (userId: string) => {
-    const response = await apiClient.post(`/admin/users/${userId}/revoke-sessions`);
-    return response.data;
-  },
-
-  // Household management
-  getHouseholdInfo: async () => {
-    const response = await apiClient.get('/admin/household');
-    return response.data;
-  },
-
-  // Audit logs
-  getAuditLogs: async (query?: AuditLogQuery) => {
-    const response = await apiClient.get('/admin/audit-logs', { params: query });
-    return response.data;
-  },
-
-  // System stats
-  getSystemStats: async () => {
-    const response = await apiClient.get('/admin/system-stats');
-    return response.data;
-  }
-};
+class ImpersonationService {
+  async startImpersonation(superAdminId: string, targetUserId: string): Promise<ImpersonationResult>
+  async endImpersonation(sessionId: string): Promise<void>
+  async getActiveSessions(): Promise<ImpersonationSession[]>
+  async getImpersonationHistory(query: HistoryQueryDto): Promise<PaginatedResponse<ImpersonationLog>>
+}
 ```
+
+---
 
 ## Security Considerations
 
-- Admins cannot change their own role (prevents privilege lockout)
-- User lock defaults to 24 hours if no duration specified
-- Unlocking a user also resets failed login attempts
-- All admin actions should be logged in the audit trail
+1. **Role Enforcement**
+   - Super Admin endpoints require SUPER_ADMIN role
+   - Household Admin endpoints require ADMIN role within the household
+   - Guards validate role before processing
+
+2. **Impersonation Security**
+   - Time-limited tokens (default 30 minutes)
+   - All actions logged with impersonation context
+   - Cannot impersonate other Super Admins
+   - Original session preserved and restored
+
+3. **Suspension Guard**
+   - Checks household status before write operations
+   - Returns 403 Forbidden for suspended households
+   - Read operations still allowed
+
+4. **Audit Trail**
+   - All admin actions logged
+   - Impersonation sessions tracked
+   - IP address and user agent recorded
+
+5. **Data Privacy**
+   - Super Admins see aggregated counts, not content
+   - Cannot view transaction details, task content, etc.
+   - Only operational metrics exposed
+
+---
 
 ## Error Codes
 
 | Status | Error | Description |
 |--------|-------|-------------|
 | 401 | Unauthorized | Not authenticated |
-| 403 | Forbidden | Not an admin or cannot modify self |
-| 404 | Not Found | User or resource not found |
+| 403 | Forbidden | Insufficient role or household suspended |
+| 404 | Not Found | User or household not found |
+| 409 | Conflict | Cannot modify own role/lock self |
+
+---
+
+## Frontend API Client
+
+```typescript
+// src/shared/api/admin.api.ts
+export const adminApi = {
+  // Household Admin
+  getUsers: () => Promise<SystemUser[]>,
+  lockUser: (userId: string) => Promise<void>,
+  unlockUser: (userId: string) => Promise<void>,
+  getHouseholdStats: () => Promise<SystemStats>,
+  getAuditLogs: (query?: AuditLogQuery) => Promise<PaginatedResponse<AuditLog>>,
+
+  // Super Admin
+  getSystemStats: () => Promise<SystemStats>,
+  getAllHouseholds: (query?: HouseholdQuery) => Promise<PaginatedResponse<Household>>,
+  createHousehold: (data: CreateHouseholdDto) => Promise<Household>,
+  suspendHousehold: (id: string, reason?: string) => Promise<Household>,
+  unsuspendHousehold: (id: string) => Promise<Household>,
+  getAllUsersSystemWide: () => Promise<SystemUser[]>,
+  resetUserPassword: (userId: string, newPassword?: string) => Promise<PasswordResetResult>,
+
+  // Impersonation
+  startImpersonation: (userId: string) => Promise<ImpersonationResponse>,
+  endImpersonation: (sessionId: string) => Promise<void>,
+  getActiveSessions: () => Promise<ImpersonationSession[]>,
+  getImpersonationHistory: (query?: HistoryQuery) => Promise<ImpersonationHistoryResponse>,
+};
+```
+
+---
+
+*Last Updated: February 2, 2026*

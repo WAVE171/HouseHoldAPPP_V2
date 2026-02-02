@@ -83,6 +83,39 @@ enum VehicleType {
   OTHER
 }
 
+enum HouseholdStatus {
+  ACTIVE
+  SUSPENDED
+  INACTIVE
+}
+
+enum SubscriptionPlan {
+  FREE
+  BASIC
+  PREMIUM
+  ENTERPRISE
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  TRIAL
+  PAST_DUE
+  CANCELLED
+  EXPIRED
+}
+
+enum BillingCycle {
+  MONTHLY
+  YEARLY
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
 // ============================================
 // AUTHENTICATION & USERS
 // ============================================
@@ -103,6 +136,10 @@ model User {
   createdRecipes     Recipe[]
   createdTransactions Transaction[]
   createdBudgets     Budget[]
+
+  // Impersonation relations
+  impersonationsAsSuperAdmin ImpersonationLog[] @relation("ImpersonationBySuperAdmin")
+  impersonationsAsTarget     ImpersonationLog[] @relation("ImpersonatedUser")
 
   twoFactorSecret     String?
   twoFactorEnabled    Boolean           @default(false)
@@ -173,6 +210,10 @@ model Household {
   address   String?
   phone     String?
 
+  // Status and activity tracking
+  status        HouseholdStatus @default(ACTIVE)
+  lastActiveAt  DateTime?
+
   creatorId String
   creator   User     @relation("HouseholdCreator", fields: [creatorId], references: [id])
   members   UserProfile[]
@@ -189,9 +230,13 @@ model Household {
   pets      Pet[]
   children  Child[]
 
+  // Subscription
+  subscription Subscription?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([status])
   @@map("households")
 }
 
@@ -1030,4 +1075,79 @@ model Notification {
   @@index([userId, read])
   @@index([createdAt])
   @@map("notifications")
+}
+
+// ============================================
+// SUBSCRIPTIONS & BILLING
+// ============================================
+
+model Subscription {
+  id            String             @id @default(cuid())
+  householdId   String             @unique
+  household     Household          @relation(fields: [householdId], references: [id], onDelete: Cascade)
+
+  plan          SubscriptionPlan   @default(FREE)
+  status        SubscriptionStatus @default(TRIAL)
+  startDate     DateTime           @default(now())
+  endDate       DateTime?
+  trialEndsAt   DateTime?
+
+  amount        Float              @default(0)
+  currency      String             @default("USD")
+  billingCycle  BillingCycle       @default(MONTHLY)
+
+  payments      Payment[]
+
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  @@index([status])
+  @@index([plan])
+  @@map("subscriptions")
+}
+
+model Payment {
+  id              String        @id @default(cuid())
+  subscriptionId  String
+  subscription    Subscription  @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  amount          Float
+  currency        String        @default("USD")
+  status          PaymentStatus @default(PENDING)
+  paymentMethod   String?
+  invoiceUrl      String?
+  invoiceNumber   String?
+  notes           String?
+
+  paidAt          DateTime?
+  createdAt       DateTime      @default(now())
+
+  @@index([subscriptionId])
+  @@index([status])
+  @@map("payments")
+}
+
+// ============================================
+// IMPERSONATION LOGS (Super Admin)
+// ============================================
+
+model ImpersonationLog {
+  id                String    @id @default(cuid())
+  superAdminId      String
+  superAdmin        User      @relation("ImpersonationBySuperAdmin", fields: [superAdminId], references: [id])
+  targetUserId      String
+  targetUser        User      @relation("ImpersonatedUser", fields: [targetUserId], references: [id])
+  targetHouseholdId String?
+
+  startedAt         DateTime  @default(now())
+  endedAt           DateTime?
+  reason            String?
+
+  // Actions taken during impersonation (JSON array)
+  actionsCount      Int       @default(0)
+
+  @@index([superAdminId])
+  @@index([targetUserId])
+  @@index([startedAt])
+  @@map("impersonation_logs")
 }
