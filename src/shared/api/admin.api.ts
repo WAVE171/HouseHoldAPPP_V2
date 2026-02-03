@@ -1,7 +1,8 @@
 import { apiClient, getApiErrorMessage } from './client';
 
 // Enable mock mode when API is unavailable
-const USE_MOCK_API = true;
+// Set VITE_USE_MOCK_API=true in .env to enable mock mode
+const USE_MOCK_API = import.meta.env.VITE_USE_MOCK_API === 'true';
 
 // Mock delay to simulate network
 const mockDelay = () => new Promise(resolve => setTimeout(resolve, 300));

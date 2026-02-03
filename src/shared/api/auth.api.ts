@@ -2,7 +2,8 @@ import apiClient, { getApiErrorMessage } from './client';
 import type { User, AuthResponse } from '@/features/auth/types/auth.types';
 
 // Enable mock mode when API is unavailable (for frontend-only development)
-const USE_MOCK_AUTH = import.meta.env.VITE_USE_MOCK_AUTH === 'true' || true; // Default to mock mode
+// Set VITE_USE_MOCK_AUTH=true in .env to enable mock mode
+const USE_MOCK_AUTH = import.meta.env.VITE_USE_MOCK_AUTH === 'true';
 
 // Mock users for testing
 const MOCK_USERS: Record<string, { password: string; user: User }> = {
