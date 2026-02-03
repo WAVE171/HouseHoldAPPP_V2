@@ -405,11 +405,15 @@ src/features/admin/
 │   └── AdminPage.tsx              # Main admin page with role-based views
 ├── components/
 │   ├── SystemDashboard.tsx        # Platform-wide metrics
-│   ├── HouseholdManagement.tsx    # Household list and management
+│   ├── HouseholdManagement.tsx    # Household list and management (with suspend/unsuspend)
 │   ├── UserManagement.tsx         # User list with actions
 │   ├── AuditLogList.tsx           # Audit log viewer
+│   ├── ImpersonationHistory.tsx   # Impersonation session history viewer
 │   ├── ImpersonationBanner.tsx    # Shows during impersonation
-│   └── SuspensionBanner.tsx       # Shows for suspended households
+│   ├── SuspensionBanner.tsx       # Shows for suspended households
+│   ├── AddHouseholdDialog.tsx     # Create new household form
+│   ├── HouseholdDetailsDialog.tsx # View/edit household details
+│   └── AdminStatsCards.tsx        # Household-level stats cards
 └── types/
     └── admin.types.ts             # TypeScript types
 ```
@@ -616,4 +620,27 @@ export const adminApi = {
 
 ---
 
-*Last Updated: February 2, 2026*
+*Last Updated: February 3, 2026*
+
+---
+
+## Mock Data for Frontend Testing
+
+The admin module includes comprehensive mock data for frontend-only development:
+
+**Test Credentials:**
+| Email | Password | Role |
+|-------|----------|------|
+| `superadmin@example.com` | `password123` | SUPER_ADMIN |
+| `admin@example.com` | `password123` | ADMIN |
+| `parent@example.com` | `password123` | PARENT |
+| `member@example.com` | `password123` | MEMBER |
+
+**Mock Data Includes:**
+- 3 test households (Smith Family, Johnson Residence, Garcia Family)
+- 4 system-wide users
+- 3 audit log entries
+- 2 impersonation history records
+- Dashboard statistics and metrics
+
+To switch between mock and real API, set `USE_MOCK_API` in `src/shared/api/admin.api.ts`.

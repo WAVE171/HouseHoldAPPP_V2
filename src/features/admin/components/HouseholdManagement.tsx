@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Home, Users, Trash2, Eye, Edit, MoreVertical, RefreshCw } from 'lucide-react';
+import { Search, Home, Users, Trash2, Eye, Edit, MoreVertical, RefreshCw, Ban, CheckCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
 import { Input } from '@/shared/components/ui/input';
 import { Button } from '@/shared/components/ui/button';
@@ -28,6 +28,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/shared/components/ui/alert-dialog';
+import { Textarea } from '@/shared/components/ui/textarea';
+import { Label } from '@/shared/components/ui/label';
 import { useToast } from '@/shared/hooks/use-toast';
 import { adminApi } from '@/shared/api/admin.api';
 import type { SystemHousehold, PaginatedResponse } from '@/shared/api/admin.api';
@@ -44,6 +46,9 @@ export function HouseholdManagement() {
   const [totalPages, setTotalPages] = useState(1);
   const [selectedHousehold, setSelectedHousehold] = useState<SystemHousehold | null>(null);
   const [householdToDelete, setHouseholdToDelete] = useState<SystemHousehold | null>(null);
+  const [householdToSuspend, setHouseholdToSuspend] = useState<SystemHousehold | null>(null);
+  const [suspensionReason, setSuspensionReason] = useState('');
+  const [isSuspending, setIsSuspending] = useState(false);
 
   const fetchHouseholds = async () => {
     setIsLoading(true);
@@ -92,6 +97,47 @@ export function HouseholdManagement() {
 
   const handleHouseholdCreated = () => {
     fetchHouseholds();
+  };
+
+  const handleSuspendHousehold = async () => {
+    if (!householdToSuspend) return;
+
+    setIsSuspending(true);
+    try {
+      await adminApi.suspendHousehold(householdToSuspend.id, suspensionReason || undefined);
+      toast({
+        title: 'Household Suspended',
+        description: `"${householdToSuspend.name}" has been suspended`,
+      });
+      setHouseholdToSuspend(null);
+      setSuspensionReason('');
+      fetchHouseholds();
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to suspend household',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSuspending(false);
+    }
+  };
+
+  const handleUnsuspendHousehold = async (household: SystemHousehold) => {
+    try {
+      await adminApi.unsuspendHousehold(household.id);
+      toast({
+        title: 'Household Activated',
+        description: `"${household.name}" has been reactivated`,
+      });
+      fetchHouseholds();
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to unsuspend household',
+        variant: 'destructive',
+      });
+    }
   };
 
   return (
@@ -144,6 +190,7 @@ export function HouseholdManagement() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Name</TableHead>
+                  <TableHead>Status</TableHead>
                   <TableHead>Admin</TableHead>
                   <TableHead>Members</TableHead>
                   <TableHead>Resources</TableHead>
@@ -162,6 +209,19 @@ export function HouseholdManagement() {
                       {household.address && (
                         <p className="text-xs text-muted-foreground mt-1">{household.address}</p>
                       )}
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={
+                          household.status === 'ACTIVE'
+                            ? 'default'
+                            : household.status === 'SUSPENDED'
+                            ? 'destructive'
+                            : 'secondary'
+                        }
+                      >
+                        {household.status}
+                      </Badge>
                     </TableCell>
                     <TableCell>
                       <span className="text-sm">{household.adminEmail || 'N/A'}</span>
@@ -212,6 +272,23 @@ export function HouseholdManagement() {
                             <Edit className="h-4 w-4 mr-2" />
                             Edit
                           </DropdownMenuItem>
+                          {household.status === 'SUSPENDED' ? (
+                            <DropdownMenuItem
+                              onClick={() => handleUnsuspendHousehold(household)}
+                              className="text-green-600"
+                            >
+                              <CheckCircle className="h-4 w-4 mr-2" />
+                              Reactivate
+                            </DropdownMenuItem>
+                          ) : (
+                            <DropdownMenuItem
+                              onClick={() => setHouseholdToSuspend(household)}
+                              className="text-orange-600"
+                            >
+                              <Ban className="h-4 w-4 mr-2" />
+                              Suspend
+                            </DropdownMenuItem>
+                          )}
                           <DropdownMenuItem
                             onClick={() => setHouseholdToDelete(household)}
                             className="text-destructive"
@@ -271,6 +348,48 @@ export function HouseholdManagement() {
                 className="bg-destructive text-destructive-foreground"
               >
                 Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Suspend Household Dialog */}
+        <AlertDialog
+          open={!!householdToSuspend}
+          onOpenChange={(open) => {
+            if (!open) {
+              setHouseholdToSuspend(null);
+              setSuspensionReason('');
+            }
+          }}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Suspend Household</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will suspend "{householdToSuspend?.name}" and restrict access for all members.
+                They will see a read-only view with a suspension notice.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <div className="py-4">
+              <Label htmlFor="suspension-reason">Reason for suspension (optional)</Label>
+              <Textarea
+                id="suspension-reason"
+                placeholder="Enter the reason for suspending this household..."
+                value={suspensionReason}
+                onChange={(e) => setSuspensionReason(e.target.value)}
+                className="mt-2"
+                rows={3}
+              />
+            </div>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={isSuspending}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleSuspendHousehold}
+                disabled={isSuspending}
+                className="bg-orange-600 hover:bg-orange-700"
+              >
+                {isSuspending ? 'Suspending...' : 'Suspend Household'}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

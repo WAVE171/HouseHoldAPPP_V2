@@ -5,6 +5,7 @@ import { UserManagement } from '../components/UserManagement';
 import { AuditLogList } from '../components/AuditLogList';
 import { HouseholdManagement } from '../components/HouseholdManagement';
 import { SystemDashboard } from '../components/SystemDashboard';
+import { ImpersonationHistory } from '../components/ImpersonationHistory';
 import { useRole } from '@/shared/hooks/useRole';
 import { adminApi } from '@/shared/api/admin.api';
 import { useToast } from '@/shared/hooks/use-toast';
@@ -159,6 +160,7 @@ export function AdminPage() {
             <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
             <TabsTrigger value="households">Households</TabsTrigger>
             <TabsTrigger value="users">Users</TabsTrigger>
+            <TabsTrigger value="impersonation">Impersonation</TabsTrigger>
             <TabsTrigger value="audit">Audit Logs</TabsTrigger>
           </TabsList>
 
@@ -180,6 +182,10 @@ export function AdminPage() {
               showResetPassword={true}
               showImpersonate={true}
             />
+          </TabsContent>
+
+          <TabsContent value="impersonation">
+            <ImpersonationHistory />
           </TabsContent>
 
           <TabsContent value="audit">

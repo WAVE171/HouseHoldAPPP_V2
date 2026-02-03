@@ -14,7 +14,10 @@ export const mockStats: SystemStats = {
   totalHouseholds: 0,
   totalTasks: 0,
   totalTransactions: 0,
-  activeUsersLast24h: 0,
+  activeUsers: 0,
+  activeHouseholds: 0,
+  newUsersThisMonth: 0,
+  newHouseholdsThisMonth: 0,
 };
 
 export async function getAdminUsers(): Promise<SystemUser[]> {

@@ -87,13 +87,16 @@ export interface AuditLogQuery {
   offset?: number;
 }
 
-// Legacy SystemStats for backwards compatibility
+// SystemStats for Household Admin dashboard
 export interface SystemStats {
   totalUsers: number;
   totalHouseholds: number;
   totalTasks: number;
   totalTransactions: number;
-  activeUsersLast24h: number;
+  activeUsers: number; // Active users in last 24h
+  activeHouseholds: number; // For super admin compatibility
+  newUsersThisMonth: number; // New users this month
+  newHouseholdsThisMonth: number; // New households this month
 }
 
 // Enhanced SystemStats for Super Admin dashboard

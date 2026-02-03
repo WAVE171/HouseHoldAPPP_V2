@@ -1,5 +1,11 @@
 import { apiClient, getApiErrorMessage } from './client';
 
+// Enable mock mode when API is unavailable
+const USE_MOCK_API = true;
+
+// Mock delay to simulate network
+const mockDelay = () => new Promise(resolve => setTimeout(resolve, 300));
+
 // Types
 export type UserRole = 'SUPER_ADMIN' | 'ADMIN' | 'PARENT' | 'MEMBER' | 'STAFF';
 
@@ -148,7 +154,10 @@ export interface SystemStats {
   totalHouseholds: number;
   totalTasks: number;
   totalTransactions: number;
-  activeUsersLast24h: number;
+  activeUsers: number;
+  activeHouseholds: number;
+  newUsersThisMonth: number;
+  newHouseholdsThisMonth: number;
 }
 
 // Enhanced System Stats for Super Admin Dashboard
@@ -254,6 +263,147 @@ export interface SystemWideUser {
   createdAt: string;
 }
 
+// ============================================
+// MOCK DATA FOR FRONTEND DEVELOPMENT
+// ============================================
+
+const mockHouseholds: SystemHousehold[] = [
+  {
+    id: 'household-1',
+    name: 'Smith Family',
+    address: '123 Main Street, Lisbon',
+    phone: '+351 912 345 678',
+    adminEmail: 'admin@example.com',
+    memberCount: 4,
+    status: 'ACTIVE',
+    lastActiveAt: new Date().toISOString(),
+    createdAt: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString(),
+    stats: { tasks: 15, transactions: 45, vehicles: 2, pets: 1, employees: 1, children: 2 },
+  },
+  {
+    id: 'household-2',
+    name: 'Johnson Residence',
+    address: '456 Oak Avenue, Porto',
+    adminEmail: 'johnson@example.com',
+    memberCount: 3,
+    status: 'ACTIVE',
+    lastActiveAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+    createdAt: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString(),
+    stats: { tasks: 8, transactions: 22, vehicles: 1, pets: 2, employees: 0, children: 1 },
+  },
+  {
+    id: 'household-3',
+    name: 'Garcia Family',
+    address: '789 Pine Road, Faro',
+    adminEmail: 'garcia@example.com',
+    memberCount: 5,
+    status: 'SUSPENDED',
+    createdAt: new Date(Date.now() - 120 * 24 * 60 * 60 * 1000).toISOString(),
+    stats: { tasks: 3, transactions: 10, vehicles: 0, pets: 0, employees: 0, children: 3 },
+  },
+];
+
+const mockUsers: SystemWideUser[] = [
+  {
+    id: 'user-1',
+    email: 'admin@example.com',
+    role: 'ADMIN',
+    firstName: 'Admin',
+    lastName: 'User',
+    householdId: 'household-1',
+    householdName: 'Smith Family',
+    lastLoginAt: new Date().toISOString(),
+    createdAt: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString(),
+  },
+  {
+    id: 'user-2',
+    email: 'parent@example.com',
+    role: 'PARENT',
+    firstName: 'Parent',
+    lastName: 'User',
+    householdId: 'household-1',
+    householdName: 'Smith Family',
+    lastLoginAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
+    createdAt: new Date(Date.now() - 85 * 24 * 60 * 60 * 1000).toISOString(),
+  },
+  {
+    id: 'user-3',
+    email: 'member@example.com',
+    role: 'MEMBER',
+    firstName: 'Family',
+    lastName: 'Member',
+    householdId: 'household-1',
+    householdName: 'Smith Family',
+    lastLoginAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+    createdAt: new Date(Date.now() - 80 * 24 * 60 * 60 * 1000).toISOString(),
+  },
+  {
+    id: 'user-4',
+    email: 'johnson@example.com',
+    role: 'ADMIN',
+    firstName: 'John',
+    lastName: 'Johnson',
+    householdId: 'household-2',
+    householdName: 'Johnson Residence',
+    lastLoginAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+    createdAt: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString(),
+  },
+];
+
+const mockAuditLogs: AuditLog[] = [
+  {
+    id: 'log-1',
+    userId: 'user-super',
+    userEmail: 'superadmin@example.com',
+    action: 'LOGIN',
+    resource: 'auth',
+    createdAt: new Date().toISOString(),
+    ipAddress: '192.168.1.1',
+  },
+  {
+    id: 'log-2',
+    userId: 'user-1',
+    userEmail: 'admin@example.com',
+    action: 'CREATE',
+    resource: 'task',
+    resourceId: 'task-123',
+    createdAt: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(),
+    ipAddress: '192.168.1.2',
+  },
+  {
+    id: 'log-3',
+    userId: 'user-super',
+    userEmail: 'superadmin@example.com',
+    action: 'SUSPEND',
+    resource: 'household',
+    resourceId: 'household-3',
+    details: { reason: 'Payment overdue' },
+    createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+    ipAddress: '192.168.1.1',
+  },
+];
+
+const mockImpersonationHistory: ImpersonationHistoryEntry[] = [
+  {
+    id: 'imp-1',
+    superAdmin: { id: 'user-super', email: 'superadmin@example.com' },
+    targetUser: { id: 'user-1', email: 'admin@example.com', name: 'Admin User' },
+    startedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+    endedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000 + 15 * 60 * 1000).toISOString(),
+    actionsCount: 5,
+    duration: 15,
+  },
+  {
+    id: 'imp-2',
+    superAdmin: { id: 'user-super', email: 'superadmin@example.com' },
+    targetUser: { id: 'user-4', email: 'johnson@example.com', name: 'John Johnson' },
+    startedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+    endedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000 + 30 * 60 * 1000).toISOString(),
+    actionsCount: 12,
+    duration: 30,
+  },
+];
+
 // API functions
 export const adminApi = {
   // ============================================
@@ -262,6 +412,21 @@ export const adminApi = {
 
   // User management (within household)
   getAllUsers: async (): Promise<AdminUser[]> => {
+    if (USE_MOCK_API) {
+      await mockDelay();
+      return mockUsers.map(u => ({
+        id: u.id,
+        email: u.email,
+        firstName: u.firstName,
+        lastName: u.lastName,
+        role: u.role,
+        lastLoginAt: u.lastLoginAt,
+        isLocked: false,
+        failedLoginAttempts: 0,
+        twoFactorEnabled: false,
+        createdAt: u.createdAt,
+      }));
+    }
     try {
       const response = await apiClient.get('/admin/users');
       return response.data;
@@ -337,6 +502,19 @@ export const adminApi = {
 
   // Get household stats (for household admin - uses household info stats)
   getHouseholdStats: async (): Promise<SystemStats> => {
+    if (USE_MOCK_API) {
+      await mockDelay();
+      return {
+        totalUsers: 4,
+        totalHouseholds: 1,
+        totalTasks: 15,
+        totalTransactions: 45,
+        activeUsers: 2,
+        activeHouseholds: 1,
+        newUsersThisMonth: 1,
+        newHouseholdsThisMonth: 0,
+      };
+    }
     try {
       const response = await apiClient.get('/admin/household');
       const info = response.data as HouseholdInfo;
@@ -346,7 +524,10 @@ export const adminApi = {
         totalHouseholds: 1,
         totalTasks: info.stats.tasks,
         totalTransactions: info.stats.transactions,
-        activeUsersLast24h: 0, // Not available for household-level
+        activeUsers: 0, // Not available for household-level
+        activeHouseholds: 1,
+        newUsersThisMonth: 0,
+        newHouseholdsThisMonth: 0,
       };
     } catch (error) {
       throw new Error(getApiErrorMessage(error));
@@ -355,6 +536,20 @@ export const adminApi = {
 
   // Audit logs
   getAuditLogs: async (query?: AuditLogQuery): Promise<AuditLogResponse> => {
+    if (USE_MOCK_API) {
+      await mockDelay();
+      const limit = query?.limit || 50;
+      const offset = query?.offset || 0;
+      return {
+        data: mockAuditLogs.slice(offset, offset + limit),
+        meta: {
+          total: mockAuditLogs.length,
+          limit,
+          offset,
+          hasMore: offset + limit < mockAuditLogs.length,
+        },
+      };
+    }
     try {
       const params: Record<string, string> = {};
       if (query?.userId) params.userId = query.userId;
@@ -388,6 +583,28 @@ export const adminApi = {
 
   // Household management (Super Admin)
   getAllHouseholds: async (page = 1, limit = 20, search?: string): Promise<PaginatedResponse<SystemHousehold>> => {
+    if (USE_MOCK_API) {
+      await mockDelay();
+      let filtered = [...mockHouseholds];
+      if (search) {
+        const searchLower = search.toLowerCase();
+        filtered = filtered.filter(h =>
+          h.name.toLowerCase().includes(searchLower) ||
+          h.adminEmail?.toLowerCase().includes(searchLower)
+        );
+      }
+      const start = (page - 1) * limit;
+      const paginatedData = filtered.slice(start, start + limit);
+      return {
+        data: paginatedData,
+        meta: {
+          total: filtered.length,
+          page,
+          limit,
+          totalPages: Math.ceil(filtered.length / limit),
+        },
+      };
+    }
     try {
       const params: Record<string, string | number> = { page, limit };
       if (search) params.search = search;
@@ -454,6 +671,19 @@ export const adminApi = {
 
   // System-wide users (Super Admin)
   getAllUsersSystemWide: async (page = 1, limit = 50): Promise<PaginatedResponse<SystemWideUser>> => {
+    if (USE_MOCK_API) {
+      await mockDelay();
+      const start = (page - 1) * limit;
+      return {
+        data: mockUsers.slice(start, start + limit),
+        meta: {
+          total: mockUsers.length,
+          page,
+          limit,
+          totalPages: Math.ceil(mockUsers.length / limit),
+        },
+      };
+    }
     try {
       const response = await apiClient.get('/admin/system/users', { params: { page, limit } });
       return response.data;
@@ -464,6 +694,25 @@ export const adminApi = {
 
   // Enhanced system stats (Super Admin)
   getEnhancedSystemStats: async (): Promise<EnhancedSystemStats> => {
+    if (USE_MOCK_API) {
+      await mockDelay();
+      return {
+        totalUsers: mockUsers.length + 1, // +1 for superadmin
+        totalHouseholds: mockHouseholds.length,
+        activeHouseholds: mockHouseholds.filter(h => h.status === 'ACTIVE').length,
+        suspendedHouseholds: mockHouseholds.filter(h => h.status === 'SUSPENDED').length,
+        inactiveHouseholds: mockHouseholds.filter(h => h.status === 'INACTIVE').length,
+        activeUsersLast24h: 3,
+        newUsersLast7Days: 2,
+        newHouseholdsLast30Days: 1,
+        subscriptionsByPlan: {
+          FREE: 2,
+          BASIC: 1,
+          PREMIUM: 0,
+          ENTERPRISE: 0,
+        },
+      };
+    }
     try {
       const response = await apiClient.get('/admin/system/stats');
       return response.data;
@@ -474,6 +723,19 @@ export const adminApi = {
 
   // Suspend household (Super Admin)
   suspendHousehold: async (householdId: string, reason?: string): Promise<{ id: string; name: string; status: string; message: string }> => {
+    if (USE_MOCK_API) {
+      await mockDelay();
+      const household = mockHouseholds.find(h => h.id === householdId);
+      if (household) {
+        household.status = 'SUSPENDED';
+      }
+      return {
+        id: householdId,
+        name: household?.name || 'Unknown',
+        status: 'SUSPENDED',
+        message: `Household suspended${reason ? `: ${reason}` : ''}`,
+      };
+    }
     try {
       const response = await apiClient.post(`/admin/households/${householdId}/suspend`, { reason });
       return response.data;
@@ -484,6 +746,19 @@ export const adminApi = {
 
   // Unsuspend household (Super Admin)
   unsuspendHousehold: async (householdId: string): Promise<{ id: string; name: string; status: string; message: string }> => {
+    if (USE_MOCK_API) {
+      await mockDelay();
+      const household = mockHouseholds.find(h => h.id === householdId);
+      if (household) {
+        household.status = 'ACTIVE';
+      }
+      return {
+        id: householdId,
+        name: household?.name || 'Unknown',
+        status: 'ACTIVE',
+        message: 'Household reactivated',
+      };
+    }
     try {
       const response = await apiClient.post(`/admin/households/${householdId}/unsuspend`);
       return response.data;
@@ -494,6 +769,17 @@ export const adminApi = {
 
   // Reset user password (Super Admin)
   resetUserPassword: async (userId: string, newPassword?: string): Promise<{ userId: string; email: string; tempPassword?: string; message: string }> => {
+    if (USE_MOCK_API) {
+      await mockDelay();
+      const user = mockUsers.find(u => u.id === userId);
+      const tempPassword = newPassword || 'TempPass123!';
+      return {
+        userId,
+        email: user?.email || 'unknown@example.com',
+        tempPassword,
+        message: 'Password has been reset',
+      };
+    }
     try {
       const response = await apiClient.post(`/admin/system/users/${userId}/reset-password`, { newPassword });
       return response.data;
@@ -545,6 +831,19 @@ export const adminApi = {
     limit?: number;
     offset?: number;
   }): Promise<ImpersonationHistoryResponse> => {
+    if (USE_MOCK_API) {
+      await mockDelay();
+      const limit = query?.limit || 20;
+      const offset = query?.offset || 0;
+      return {
+        data: mockImpersonationHistory.slice(offset, offset + limit),
+        meta: {
+          total: mockImpersonationHistory.length,
+          limit,
+          offset,
+        },
+      };
+    }
     try {
       const params: Record<string, string | number> = {};
       if (query?.superAdminId) params.superAdminId = query.superAdminId;
