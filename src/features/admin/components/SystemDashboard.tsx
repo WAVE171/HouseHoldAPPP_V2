@@ -14,7 +14,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui
 import { Button } from '@/shared/components/ui/button';
 import { Badge } from '@/shared/components/ui/badge';
 import { useToast } from '@/shared/hooks/use-toast';
-import { adminApi, EnhancedSystemStats } from '@/shared/api/admin.api';
+import { adminApi } from '@/shared/api/admin.api';
+import type { EnhancedSystemStats } from '../types/admin.types';
 
 interface SystemDashboardProps {
   onCreateHousehold?: () => void;

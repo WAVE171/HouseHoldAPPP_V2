@@ -4,4 +4,7 @@ export type {
   SystemHousehold,
   AuditLog,
   SystemStats,
+  EnhancedSystemStats,
+  HouseholdStatus,
+  SubscriptionPlan,
 } from './types/admin.types';
