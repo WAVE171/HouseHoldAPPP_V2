@@ -5,6 +5,7 @@ import { AdminController } from './admin.controller';
 import { AdminService } from './admin.service';
 import { ImpersonationService } from './impersonation.service';
 import { DatabaseModule } from '../../database/database.module';
+import { PlanLimitsService } from '../../common/services/plan-limits.service';
 
 @Module({
   imports: [
@@ -19,7 +20,7 @@ import { DatabaseModule } from '../../database/database.module';
     }),
   ],
   controllers: [AdminController],
-  providers: [AdminService, ImpersonationService],
-  exports: [AdminService, ImpersonationService],
+  providers: [AdminService, ImpersonationService, PlanLimitsService],
+  exports: [AdminService, ImpersonationService, PlanLimitsService],
 })
 export class AdminModule {}

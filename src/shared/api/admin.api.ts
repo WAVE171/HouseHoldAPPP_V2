@@ -251,6 +251,52 @@ export interface PaginatedResponse<T> {
   };
 }
 
+// Subscription Types
+export type SubscriptionPlan = 'FREE' | 'BASIC' | 'PREMIUM' | 'ENTERPRISE';
+export type SubscriptionStatus = 'ACTIVE' | 'TRIAL' | 'PAST_DUE' | 'CANCELLED' | 'EXPIRED';
+export type BillingCycle = 'MONTHLY' | 'YEARLY';
+
+export interface Subscription {
+  id: string;
+  householdId: string;
+  householdName: string;
+  plan: SubscriptionPlan;
+  status: SubscriptionStatus;
+  startDate: string;
+  endDate?: string;
+  trialEndsAt?: string;
+  amount: number;
+  currency: string;
+  billingCycle: BillingCycle;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SubscriptionStats {
+  totalRevenue: number;
+  monthlyRecurringRevenue: number;
+  activeSubscriptions: number;
+  trialSubscriptions: number;
+  cancelledThisMonth: number;
+  byPlan: {
+    FREE: number;
+    BASIC: number;
+    PREMIUM: number;
+    ENTERPRISE: number;
+  };
+}
+
+export interface SystemSettings {
+  siteName: string;
+  supportEmail: string;
+  defaultTrialDays: number;
+  maintenanceMode: boolean;
+  registrationEnabled: boolean;
+  maxLoginAttempts: number;
+  sessionTimeout: number;
+  emailNotificationsEnabled: boolean;
+}
+
 export interface SystemWideUser {
   id: string;
   email: string;
@@ -404,6 +450,100 @@ const mockImpersonationHistory: ImpersonationHistoryEntry[] = [
     duration: 30,
   },
 ];
+
+const mockSubscriptions: Subscription[] = [
+  {
+    id: 'sub-1',
+    householdId: 'household-1',
+    householdName: 'Smith Family',
+    plan: 'PREMIUM',
+    status: 'ACTIVE',
+    startDate: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString(),
+    amount: 19.99,
+    currency: 'USD',
+    billingCycle: 'MONTHLY',
+    createdAt: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: 'sub-2',
+    householdId: 'household-2',
+    householdName: 'Johnson Residence',
+    plan: 'BASIC',
+    status: 'ACTIVE',
+    startDate: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000).toISOString(),
+    amount: 9.99,
+    currency: 'USD',
+    billingCycle: 'MONTHLY',
+    createdAt: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000).toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: 'sub-3',
+    householdId: 'household-3',
+    householdName: 'Garcia Family',
+    plan: 'FREE',
+    status: 'TRIAL',
+    startDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+    trialEndsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+    amount: 0,
+    currency: 'USD',
+    billingCycle: 'MONTHLY',
+    createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: 'sub-4',
+    householdId: 'household-4',
+    householdName: 'Williams House',
+    plan: 'BASIC',
+    status: 'PAST_DUE',
+    startDate: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString(),
+    amount: 9.99,
+    currency: 'USD',
+    billingCycle: 'MONTHLY',
+    createdAt: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: 'sub-5',
+    householdId: 'household-5',
+    householdName: 'Brown Estate',
+    plan: 'ENTERPRISE',
+    status: 'ACTIVE',
+    startDate: new Date(Date.now() - 180 * 24 * 60 * 60 * 1000).toISOString(),
+    amount: 99.99,
+    currency: 'USD',
+    billingCycle: 'YEARLY',
+    createdAt: new Date(Date.now() - 180 * 24 * 60 * 60 * 1000).toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+];
+
+const mockSubscriptionStats: SubscriptionStats = {
+  totalRevenue: 15847.50,
+  monthlyRecurringRevenue: 1249.85,
+  activeSubscriptions: 42,
+  trialSubscriptions: 8,
+  cancelledThisMonth: 3,
+  byPlan: {
+    FREE: 15,
+    BASIC: 20,
+    PREMIUM: 12,
+    ENTERPRISE: 3,
+  },
+};
+
+const mockSystemSettings: SystemSettings = {
+  siteName: 'Household Hero',
+  supportEmail: 'support@householdhero.com',
+  defaultTrialDays: 14,
+  maintenanceMode: false,
+  registrationEnabled: true,
+  maxLoginAttempts: 5,
+  sessionTimeout: 30,
+  emailNotificationsEnabled: true,
+};
 
 // API functions
 export const adminApi = {
@@ -854,6 +994,179 @@ export const adminApi = {
       if (query?.limit) params.limit = query.limit;
       if (query?.offset) params.offset = query.offset;
       const response = await apiClient.get('/admin/impersonate/history', { params });
+      return response.data;
+    } catch (error) {
+      throw new Error(getApiErrorMessage(error));
+    }
+  },
+
+  // ============================================
+  // SUBSCRIPTION MANAGEMENT (Super Admin)
+  // ============================================
+
+  // Get all subscriptions
+  getSubscriptions: async (query?: {
+    plan?: SubscriptionPlan;
+    status?: SubscriptionStatus;
+    search?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<PaginatedResponse<Subscription>> => {
+    if (USE_MOCK_API) {
+      await mockDelay();
+      const limit = query?.limit || 20;
+      const page = query?.page || 1;
+      let filtered = [...mockSubscriptions];
+
+      if (query?.plan) {
+        filtered = filtered.filter(s => s.plan === query.plan);
+      }
+      if (query?.status) {
+        filtered = filtered.filter(s => s.status === query.status);
+      }
+      if (query?.search) {
+        const searchLower = query.search.toLowerCase();
+        filtered = filtered.filter(s =>
+          s.householdName.toLowerCase().includes(searchLower)
+        );
+      }
+
+      const start = (page - 1) * limit;
+      return {
+        data: filtered.slice(start, start + limit),
+        meta: {
+          total: filtered.length,
+          page,
+          limit,
+          totalPages: Math.ceil(filtered.length / limit),
+          hasMore: start + limit < filtered.length,
+        },
+      };
+    }
+    try {
+      const params: Record<string, string | number> = {};
+      if (query?.plan) params.plan = query.plan;
+      if (query?.status) params.status = query.status;
+      if (query?.search) params.search = query.search;
+      if (query?.page) params.page = query.page;
+      if (query?.limit) params.limit = query.limit;
+      const response = await apiClient.get('/admin/subscriptions', { params });
+      return response.data;
+    } catch (error) {
+      throw new Error(getApiErrorMessage(error));
+    }
+  },
+
+  // Get subscription stats
+  getSubscriptionStats: async (): Promise<SubscriptionStats> => {
+    if (USE_MOCK_API) {
+      await mockDelay();
+      return mockSubscriptionStats;
+    }
+    try {
+      const response = await apiClient.get('/admin/subscriptions/stats');
+      return response.data;
+    } catch (error) {
+      throw new Error(getApiErrorMessage(error));
+    }
+  },
+
+  // Update subscription
+  updateSubscription: async (
+    subscriptionId: string,
+    data: { plan?: SubscriptionPlan; status?: SubscriptionStatus }
+  ): Promise<Subscription> => {
+    if (USE_MOCK_API) {
+      await mockDelay();
+      const subscription = mockSubscriptions.find(s => s.id === subscriptionId);
+      if (!subscription) {
+        throw new Error('Subscription not found');
+      }
+      if (data.plan) subscription.plan = data.plan;
+      if (data.status) subscription.status = data.status;
+      subscription.updatedAt = new Date().toISOString();
+      return subscription;
+    }
+    try {
+      const response = await apiClient.patch(`/admin/subscriptions/${subscriptionId}`, data);
+      return response.data;
+    } catch (error) {
+      throw new Error(getApiErrorMessage(error));
+    }
+  },
+
+  // Extend trial
+  extendTrial: async (subscriptionId: string, days: number): Promise<Subscription> => {
+    if (USE_MOCK_API) {
+      await mockDelay();
+      const subscription = mockSubscriptions.find(s => s.id === subscriptionId);
+      if (!subscription) {
+        throw new Error('Subscription not found');
+      }
+      const currentTrialEnd = subscription.trialEndsAt
+        ? new Date(subscription.trialEndsAt)
+        : new Date();
+      currentTrialEnd.setDate(currentTrialEnd.getDate() + days);
+      subscription.trialEndsAt = currentTrialEnd.toISOString();
+      subscription.status = 'TRIAL';
+      subscription.updatedAt = new Date().toISOString();
+      return subscription;
+    }
+    try {
+      const response = await apiClient.post(`/admin/subscriptions/${subscriptionId}/extend-trial`, { days });
+      return response.data;
+    } catch (error) {
+      throw new Error(getApiErrorMessage(error));
+    }
+  },
+
+  // Cancel subscription
+  cancelSubscription: async (subscriptionId: string, reason?: string): Promise<Subscription> => {
+    if (USE_MOCK_API) {
+      await mockDelay();
+      const subscription = mockSubscriptions.find(s => s.id === subscriptionId);
+      if (!subscription) {
+        throw new Error('Subscription not found');
+      }
+      subscription.status = 'CANCELLED';
+      subscription.updatedAt = new Date().toISOString();
+      return subscription;
+    }
+    try {
+      const response = await apiClient.post(`/admin/subscriptions/${subscriptionId}/cancel`, { reason });
+      return response.data;
+    } catch (error) {
+      throw new Error(getApiErrorMessage(error));
+    }
+  },
+
+  // ============================================
+  // SYSTEM SETTINGS (Super Admin)
+  // ============================================
+
+  // Get system settings
+  getSystemSettings: async (): Promise<SystemSettings> => {
+    if (USE_MOCK_API) {
+      await mockDelay();
+      return mockSystemSettings;
+    }
+    try {
+      const response = await apiClient.get('/admin/settings');
+      return response.data;
+    } catch (error) {
+      throw new Error(getApiErrorMessage(error));
+    }
+  },
+
+  // Update system settings
+  updateSystemSettings: async (settings: Partial<SystemSettings>): Promise<SystemSettings> => {
+    if (USE_MOCK_API) {
+      await mockDelay();
+      Object.assign(mockSystemSettings, settings);
+      return mockSystemSettings;
+    }
+    try {
+      const response = await apiClient.patch('/admin/settings', settings);
       return response.data;
     } catch (error) {
       throw new Error(getApiErrorMessage(error));

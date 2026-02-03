@@ -19,6 +19,7 @@ import { Household } from '../../common/decorators/household.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { AdminService } from './admin.service';
 import { ImpersonationService } from './impersonation.service';
+import { PlanLimitsService } from '../../common/services/plan-limits.service';
 import {
   UpdateUserRoleDto,
   AuditLogQueryDto,
@@ -28,6 +29,11 @@ import {
   HouseholdsQueryDto,
   AssignHouseholdAdminDto,
   AdminCreateUserDto,
+  SubscriptionsQueryDto,
+  UpdateSubscriptionDto,
+  ExtendTrialDto,
+  CancelSubscriptionDto,
+  UpdateSystemSettingsDto,
 } from './dto/admin.dto';
 
 @ApiTags('admin')
@@ -38,6 +44,7 @@ export class AdminController {
   constructor(
     private readonly adminService: AdminService,
     private readonly impersonationService: ImpersonationService,
+    private readonly planLimitsService: PlanLimitsService,
   ) {}
 
   // ============================================
@@ -110,6 +117,15 @@ export class AdminController {
   @ApiOperation({ summary: 'Get current household info' })
   getHouseholdInfo(@Household('id') householdId: string) {
     return this.adminService.getHouseholdInfo(householdId);
+  }
+
+  // Plan usage summary (for household admin)
+  @Get('household/usage')
+  @UseGuards(HouseholdGuard, RolesGuard)
+  @Roles('ADMIN', 'PARENT', 'SUPER_ADMIN')
+  @ApiOperation({ summary: 'Get household plan usage and limits' })
+  getHouseholdUsage(@Household('id') householdId: string) {
+    return this.planLimitsService.getUsageSummary(householdId);
   }
 
   // Audit logs
@@ -309,5 +325,78 @@ export class AdminController {
       limit: limit ? Number(limit) : undefined,
       offset: offset ? Number(offset) : undefined,
     });
+  }
+
+  // ============================================
+  // SUBSCRIPTION MANAGEMENT (Super Admin only)
+  // ============================================
+
+  // Get all subscriptions
+  @Get('subscriptions')
+  @UseGuards(SuperAdminGuard)
+  @ApiOperation({ summary: 'List all subscriptions (Super Admin only)' })
+  getSubscriptions(@Query() query: SubscriptionsQueryDto) {
+    return this.adminService.getSubscriptions(query);
+  }
+
+  // Get subscription stats
+  @Get('subscriptions/stats')
+  @UseGuards(SuperAdminGuard)
+  @ApiOperation({ summary: 'Get subscription statistics (Super Admin only)' })
+  getSubscriptionStats() {
+    return this.adminService.getSubscriptionStats();
+  }
+
+  // Update subscription
+  @Patch('subscriptions/:subscriptionId')
+  @UseGuards(SuperAdminGuard)
+  @ApiOperation({ summary: 'Update subscription (Super Admin only)' })
+  updateSubscription(
+    @Param('subscriptionId') subscriptionId: string,
+    @Body() dto: UpdateSubscriptionDto,
+  ) {
+    return this.adminService.updateSubscription(subscriptionId, dto);
+  }
+
+  // Extend trial
+  @Post('subscriptions/:subscriptionId/extend-trial')
+  @UseGuards(SuperAdminGuard)
+  @ApiOperation({ summary: 'Extend subscription trial (Super Admin only)' })
+  extendTrial(
+    @Param('subscriptionId') subscriptionId: string,
+    @Body() dto: ExtendTrialDto,
+  ) {
+    return this.adminService.extendTrial(subscriptionId, dto.days);
+  }
+
+  // Cancel subscription
+  @Post('subscriptions/:subscriptionId/cancel')
+  @UseGuards(SuperAdminGuard)
+  @ApiOperation({ summary: 'Cancel subscription (Super Admin only)' })
+  cancelSubscription(
+    @Param('subscriptionId') subscriptionId: string,
+    @Body() dto: CancelSubscriptionDto,
+  ) {
+    return this.adminService.cancelSubscription(subscriptionId, dto.reason);
+  }
+
+  // ============================================
+  // SYSTEM SETTINGS (Super Admin only)
+  // ============================================
+
+  // Get system settings
+  @Get('settings')
+  @UseGuards(SuperAdminGuard)
+  @ApiOperation({ summary: 'Get system settings (Super Admin only)' })
+  getSystemSettings() {
+    return this.adminService.getSystemSettings();
+  }
+
+  // Update system settings
+  @Patch('settings')
+  @UseGuards(SuperAdminGuard)
+  @ApiOperation({ summary: 'Update system settings (Super Admin only)' })
+  updateSystemSettings(@Body() dto: UpdateSystemSettingsDto) {
+    return this.adminService.updateSystemSettings(dto);
   }
 }

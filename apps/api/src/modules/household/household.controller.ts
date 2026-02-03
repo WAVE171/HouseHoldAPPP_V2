@@ -7,6 +7,8 @@ import {
   Body,
   Param,
   UseGuards,
+  Req,
+  ForbiddenException,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -14,6 +16,7 @@ import {
   ApiResponse,
   ApiBearerAuth,
 } from '@nestjs/swagger';
+import { Request } from 'express';
 import { HouseholdService } from './household.service';
 import {
   UpdateHouseholdDto,
@@ -25,12 +28,27 @@ import { CurrentUser } from '../../common/decorators';
 import type { JwtPayload } from '../../common/decorators';
 import { HouseholdGuard } from '../../common/guards';
 
+// Extend Request to include householdId from guard
+interface RequestWithHousehold extends Request {
+  householdId?: string;
+}
+
 @ApiTags('household')
 @ApiBearerAuth()
 @UseGuards(HouseholdGuard)
 @Controller('household')
 export class HouseholdController {
   constructor(private householdService: HouseholdService) {}
+
+  private getHouseholdId(user: JwtPayload, req: RequestWithHousehold): string {
+    const householdId = req.householdId || user.householdId;
+    if (!householdId) {
+      throw new ForbiddenException(
+        'Super Admins must specify a householdId. Use the Admin panel to manage households.',
+      );
+    }
+    return householdId;
+  }
 
   @Get()
   @ApiOperation({ summary: 'Get current household' })
@@ -41,8 +59,9 @@ export class HouseholdController {
   })
   async getHousehold(
     @CurrentUser() user: JwtPayload,
+    @Req() req: RequestWithHousehold,
   ): Promise<HouseholdResponseDto> {
-    return this.householdService.getHousehold(user.householdId!);
+    return this.householdService.getHousehold(this.getHouseholdId(user, req));
   }
 
   @Patch()
@@ -54,10 +73,11 @@ export class HouseholdController {
   })
   async updateHousehold(
     @CurrentUser() user: JwtPayload,
+    @Req() req: RequestWithHousehold,
     @Body() updateDto: UpdateHouseholdDto,
   ): Promise<HouseholdResponseDto> {
     return this.householdService.updateHousehold(
-      user.householdId!,
+      this.getHouseholdId(user, req),
       user.sub,
       updateDto,
     );
@@ -72,8 +92,9 @@ export class HouseholdController {
   })
   async getMembers(
     @CurrentUser() user: JwtPayload,
+    @Req() req: RequestWithHousehold,
   ): Promise<HouseholdMemberDto[]> {
-    return this.householdService.getMembers(user.householdId!);
+    return this.householdService.getMembers(this.getHouseholdId(user, req));
   }
 
   @Post('invite')
@@ -85,10 +106,11 @@ export class HouseholdController {
   })
   async inviteMember(
     @CurrentUser() user: JwtPayload,
+    @Req() req: RequestWithHousehold,
     @Body() inviteDto: InviteMemberDto,
   ): Promise<HouseholdMemberDto> {
     return this.householdService.inviteMember(
-      user.householdId!,
+      this.getHouseholdId(user, req),
       user.sub,
       inviteDto,
     );
@@ -99,10 +121,11 @@ export class HouseholdController {
   @ApiResponse({ status: 200, description: 'Member removed' })
   async removeMember(
     @CurrentUser() user: JwtPayload,
+    @Req() req: RequestWithHousehold,
     @Param('memberId') memberId: string,
   ): Promise<{ success: boolean }> {
     return this.householdService.removeMember(
-      user.householdId!,
+      this.getHouseholdId(user, req),
       user.sub,
       memberId,
     );

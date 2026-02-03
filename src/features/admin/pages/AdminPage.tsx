@@ -6,6 +6,8 @@ import { AuditLogList } from '../components/AuditLogList';
 import { HouseholdManagement } from '../components/HouseholdManagement';
 import { SystemDashboard } from '../components/SystemDashboard';
 import { ImpersonationHistory } from '../components/ImpersonationHistory';
+import { SubscriptionManagement } from '../components/SubscriptionManagement';
+import { SystemSettings } from '../components/SystemSettings';
 import { useRole } from '@/shared/hooks/useRole';
 import { adminApi } from '@/shared/api/admin.api';
 import { useToast } from '@/shared/hooks/use-toast';
@@ -160,8 +162,10 @@ export function AdminPage() {
             <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
             <TabsTrigger value="households">Households</TabsTrigger>
             <TabsTrigger value="users">Users</TabsTrigger>
+            <TabsTrigger value="billing">Billing</TabsTrigger>
             <TabsTrigger value="impersonation">Impersonation</TabsTrigger>
             <TabsTrigger value="audit">Audit Logs</TabsTrigger>
+            <TabsTrigger value="settings">Settings</TabsTrigger>
           </TabsList>
 
           <TabsContent value="dashboard">
@@ -188,8 +192,16 @@ export function AdminPage() {
             <ImpersonationHistory />
           </TabsContent>
 
+          <TabsContent value="billing">
+            <SubscriptionManagement />
+          </TabsContent>
+
           <TabsContent value="audit">
             <AuditLogList logs={auditLogs} />
+          </TabsContent>
+
+          <TabsContent value="settings">
+            <SystemSettings />
           </TabsContent>
         </Tabs>
       </div>

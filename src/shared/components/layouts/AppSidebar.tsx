@@ -36,6 +36,9 @@ export function AppSidebar() {
   const { user } = useAuthStore();
   const { t } = useLanguage();
 
+  const isSuperAdmin = user?.role === 'SUPER_ADMIN';
+
+  // Household-level navigation (not for Super Admin)
   const mainNavItems = [
     {
       title: t.navigation.dashboard,
@@ -46,59 +49,70 @@ export function AppSidebar() {
       title: t.navigation.household,
       icon: Home,
       href: '/household',
+      requiresHousehold: true,
     },
     {
       title: t.navigation.employees,
       icon: Users,
       href: '/employees',
       roles: ['ADMIN', 'PARENT'],
+      requiresHousehold: true,
     },
     {
       title: t.navigation.vehicles,
       icon: Car,
       href: '/vehicles',
+      requiresHousehold: true,
     },
     {
       title: t.navigation.pets,
       icon: PawPrint,
       href: '/pets',
+      requiresHousehold: true,
     },
     {
       title: t.navigation.kids,
       icon: Baby,
       href: '/kids',
+      requiresHousehold: true,
     },
     {
       title: t.navigation.tasks,
       icon: CheckSquare,
       href: '/tasks',
+      requiresHousehold: true,
     },
     {
       title: t.navigation.inventory,
       icon: Package,
       href: '/inventory',
+      requiresHousehold: true,
     },
     {
       title: t.navigation.scanning,
       icon: ScanLine,
       href: '/scanning',
       roles: ['ADMIN', 'PARENT', 'STAFF'],
+      requiresHousehold: true,
     },
     {
       title: t.navigation.finance,
       icon: Wallet,
       href: '/finance',
       roles: ['ADMIN', 'PARENT'],
+      requiresHousehold: true,
     },
     {
       title: t.navigation.calendar,
       icon: Calendar,
       href: '/calendar',
+      requiresHousehold: true,
     },
     {
       title: t.navigation.recipes,
       icon: ChefHat,
       href: '/recipes',
+      requiresHousehold: true,
     },
   ];
 
@@ -107,12 +121,16 @@ export function AppSidebar() {
       title: t.navigation.admin,
       icon: Shield,
       href: '/admin',
-      roles: ['ADMIN'],
+      roles: ['ADMIN', 'SUPER_ADMIN'],
     },
   ];
 
   const filterByRole = (items: typeof mainNavItems) => {
     return items.filter((item) => {
+      // Super Admin can't access household-specific items
+      if (isSuperAdmin && item.requiresHousehold) return false;
+
+      // Check role restrictions
       if (!item.roles) return true;
       if (!user) return false;
       return item.roles.includes(user.role);

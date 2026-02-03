@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, ForbiddenException, ConflictException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
-import { Role } from '@prisma/client';
-import { AuditLogQueryDto, CreateAuditLogDto, CreateHouseholdDto, AdminUpdateHouseholdDto, HouseholdsQueryDto, AdminCreateUserDto } from './dto/admin.dto';
+import { Role, SubscriptionPlan, SubscriptionStatus } from '@prisma/client';
+import { AuditLogQueryDto, CreateAuditLogDto, CreateHouseholdDto, AdminUpdateHouseholdDto, HouseholdsQueryDto, AdminCreateUserDto, SubscriptionsQueryDto, UpdateSubscriptionDto } from './dto/admin.dto';
 import * as bcrypt from 'bcryptjs';
 
 @Injectable()
@@ -871,5 +871,359 @@ export class AdminService {
       password += chars.charAt(Math.floor(Math.random() * chars.length));
     }
     return password;
+  }
+
+  // ============================================
+  // SUBSCRIPTION MANAGEMENT (Super Admin)
+  // ============================================
+
+  async getSubscriptions(query: SubscriptionsQueryDto) {
+    const page = query.page || 1;
+    const limit = query.limit || 20;
+    const skip = (page - 1) * limit;
+
+    const where: any = {};
+    if (query.plan) where.plan = query.plan;
+    if (query.status) where.status = query.status;
+    if (query.search) {
+      where.household = { name: { contains: query.search, mode: 'insensitive' } };
+    }
+
+    const [subscriptions, total] = await Promise.all([
+      this.prisma.subscription.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          household: {
+            select: { id: true, name: true },
+          },
+        },
+      }),
+      this.prisma.subscription.count({ where }),
+    ]);
+
+    return {
+      data: subscriptions.map((s) => ({
+        id: s.id,
+        householdId: s.householdId,
+        householdName: s.household.name,
+        plan: s.plan,
+        status: s.status,
+        startDate: s.startDate.toISOString(),
+        endDate: s.endDate?.toISOString(),
+        trialEndsAt: s.trialEndsAt?.toISOString(),
+        amount: s.amount,
+        currency: s.currency,
+        billingCycle: s.billingCycle,
+        createdAt: s.createdAt.toISOString(),
+        updatedAt: s.updatedAt.toISOString(),
+      })),
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+        hasMore: page * limit < total,
+      },
+    };
+  }
+
+  async getSubscriptionStats() {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const [
+      activeSubscriptions,
+      trialSubscriptions,
+      cancelledThisMonth,
+      byPlan,
+      totalRevenue,
+      monthlyRevenue,
+    ] = await Promise.all([
+      // Active subscriptions
+      this.prisma.subscription.count({
+        where: { status: 'ACTIVE' },
+      }),
+      // Trial subscriptions
+      this.prisma.subscription.count({
+        where: { status: 'TRIAL' },
+      }),
+      // Cancelled this month
+      this.prisma.subscription.count({
+        where: {
+          status: 'CANCELLED',
+          updatedAt: { gte: startOfMonth },
+        },
+      }),
+      // By plan
+      this.prisma.subscription.groupBy({
+        by: ['plan'],
+        _count: { plan: true },
+      }),
+      // Total revenue (all time)
+      this.prisma.payment.aggregate({
+        _sum: { amount: true },
+        where: { status: 'COMPLETED' },
+      }),
+      // Monthly recurring revenue (active monthly subscriptions)
+      this.prisma.subscription.aggregate({
+        _sum: { amount: true },
+        where: {
+          status: 'ACTIVE',
+          billingCycle: 'MONTHLY',
+        },
+      }),
+    ]);
+
+    // Format by plan stats
+    const byPlanStats: Record<string, number> = {
+      FREE: 0,
+      BASIC: 0,
+      PREMIUM: 0,
+      ENTERPRISE: 0,
+    };
+    byPlan.forEach((p) => {
+      byPlanStats[p.plan] = p._count.plan;
+    });
+
+    return {
+      totalRevenue: totalRevenue._sum.amount || 0,
+      monthlyRecurringRevenue: monthlyRevenue._sum.amount || 0,
+      activeSubscriptions,
+      trialSubscriptions,
+      cancelledThisMonth,
+      byPlan: byPlanStats,
+    };
+  }
+
+  async updateSubscription(subscriptionId: string, dto: UpdateSubscriptionDto) {
+    const subscription = await this.prisma.subscription.findUnique({
+      where: { id: subscriptionId },
+      include: { household: { select: { name: true } } },
+    });
+
+    if (!subscription) {
+      throw new NotFoundException('Subscription not found');
+    }
+
+    // Update the amount based on plan if plan is being changed
+    let amount = subscription.amount;
+    if (dto.plan && dto.plan !== subscription.plan) {
+      amount = this.getPlanAmount(dto.plan);
+    }
+
+    const updated = await this.prisma.subscription.update({
+      where: { id: subscriptionId },
+      data: {
+        plan: dto.plan,
+        status: dto.status,
+        amount,
+      },
+      include: { household: { select: { id: true, name: true } } },
+    });
+
+    // Log the change
+    await this.createAuditLog({
+      userId: 'SYSTEM',
+      userEmail: 'system@householdhero.com',
+      action: 'SUBSCRIPTION_UPDATE',
+      resource: 'Subscription',
+      resourceId: subscriptionId,
+      details: {
+        householdId: subscription.householdId,
+        householdName: subscription.household.name,
+        changes: dto,
+      },
+    });
+
+    return {
+      id: updated.id,
+      householdId: updated.householdId,
+      householdName: updated.household.name,
+      plan: updated.plan,
+      status: updated.status,
+      startDate: updated.startDate.toISOString(),
+      endDate: updated.endDate?.toISOString(),
+      trialEndsAt: updated.trialEndsAt?.toISOString(),
+      amount: updated.amount,
+      currency: updated.currency,
+      billingCycle: updated.billingCycle,
+      createdAt: updated.createdAt.toISOString(),
+      updatedAt: updated.updatedAt.toISOString(),
+    };
+  }
+
+  async extendTrial(subscriptionId: string, days: number) {
+    const subscription = await this.prisma.subscription.findUnique({
+      where: { id: subscriptionId },
+      include: { household: { select: { name: true } } },
+    });
+
+    if (!subscription) {
+      throw new NotFoundException('Subscription not found');
+    }
+
+    // Calculate new trial end date
+    const currentTrialEnd = subscription.trialEndsAt || new Date();
+    const newTrialEnd = new Date(currentTrialEnd);
+    newTrialEnd.setDate(newTrialEnd.getDate() + days);
+
+    const updated = await this.prisma.subscription.update({
+      where: { id: subscriptionId },
+      data: {
+        trialEndsAt: newTrialEnd,
+        status: 'TRIAL',
+      },
+      include: { household: { select: { id: true, name: true } } },
+    });
+
+    // Log the extension
+    await this.createAuditLog({
+      userId: 'SYSTEM',
+      userEmail: 'system@householdhero.com',
+      action: 'TRIAL_EXTENDED',
+      resource: 'Subscription',
+      resourceId: subscriptionId,
+      details: {
+        householdId: subscription.householdId,
+        householdName: subscription.household.name,
+        daysExtended: days,
+        newTrialEnd: newTrialEnd.toISOString(),
+      },
+    });
+
+    return {
+      id: updated.id,
+      householdId: updated.householdId,
+      householdName: updated.household.name,
+      plan: updated.plan,
+      status: updated.status,
+      startDate: updated.startDate.toISOString(),
+      endDate: updated.endDate?.toISOString(),
+      trialEndsAt: updated.trialEndsAt?.toISOString(),
+      amount: updated.amount,
+      currency: updated.currency,
+      billingCycle: updated.billingCycle,
+      createdAt: updated.createdAt.toISOString(),
+      updatedAt: updated.updatedAt.toISOString(),
+    };
+  }
+
+  async cancelSubscription(subscriptionId: string, reason?: string) {
+    const subscription = await this.prisma.subscription.findUnique({
+      where: { id: subscriptionId },
+      include: { household: { select: { name: true } } },
+    });
+
+    if (!subscription) {
+      throw new NotFoundException('Subscription not found');
+    }
+
+    if (subscription.status === 'CANCELLED') {
+      throw new BadRequestException('Subscription is already cancelled');
+    }
+
+    const updated = await this.prisma.subscription.update({
+      where: { id: subscriptionId },
+      data: {
+        status: 'CANCELLED',
+        endDate: new Date(),
+      },
+      include: { household: { select: { id: true, name: true } } },
+    });
+
+    // Log the cancellation
+    await this.createAuditLog({
+      userId: 'SYSTEM',
+      userEmail: 'system@householdhero.com',
+      action: 'SUBSCRIPTION_CANCELLED',
+      resource: 'Subscription',
+      resourceId: subscriptionId,
+      details: {
+        householdId: subscription.householdId,
+        householdName: subscription.household.name,
+        reason,
+      },
+    });
+
+    return {
+      id: updated.id,
+      householdId: updated.householdId,
+      householdName: updated.household.name,
+      plan: updated.plan,
+      status: updated.status,
+      startDate: updated.startDate.toISOString(),
+      endDate: updated.endDate?.toISOString(),
+      trialEndsAt: updated.trialEndsAt?.toISOString(),
+      amount: updated.amount,
+      currency: updated.currency,
+      billingCycle: updated.billingCycle,
+      createdAt: updated.createdAt.toISOString(),
+      updatedAt: updated.updatedAt.toISOString(),
+    };
+  }
+
+  private getPlanAmount(plan: SubscriptionPlan): number {
+    const amounts: Record<SubscriptionPlan, number> = {
+      FREE: 0,
+      BASIC: 9.99,
+      PREMIUM: 19.99,
+      ENTERPRISE: 49.99,
+    };
+    return amounts[plan];
+  }
+
+  // ============================================
+  // SYSTEM SETTINGS (Super Admin)
+  // ============================================
+
+  async getSystemSettings() {
+    // In a real app, these would be stored in a settings table
+    // For now, return default values
+    return {
+      siteName: 'Household Hero',
+      supportEmail: 'support@householdhero.com',
+      defaultTrialDays: 14,
+      maintenanceMode: false,
+      registrationEnabled: true,
+      maxLoginAttempts: 5,
+      sessionTimeout: 30,
+      emailNotificationsEnabled: true,
+    };
+  }
+
+  async updateSystemSettings(settings: Partial<{
+    siteName: string;
+    supportEmail: string;
+    defaultTrialDays: number;
+    maintenanceMode: boolean;
+    registrationEnabled: boolean;
+    maxLoginAttempts: number;
+    sessionTimeout: number;
+    emailNotificationsEnabled: boolean;
+  }>) {
+    // In a real app, persist these to a settings table
+    // For now, just return the settings as if they were saved
+    // Log the settings change
+    await this.createAuditLog({
+      userId: 'SYSTEM',
+      userEmail: 'system@householdhero.com',
+      action: 'SETTINGS_UPDATE',
+      resource: 'SystemSettings',
+      details: { changes: settings },
+    });
+
+    return {
+      siteName: settings.siteName || 'Household Hero',
+      supportEmail: settings.supportEmail || 'support@householdhero.com',
+      defaultTrialDays: settings.defaultTrialDays ?? 14,
+      maintenanceMode: settings.maintenanceMode ?? false,
+      registrationEnabled: settings.registrationEnabled ?? true,
+      maxLoginAttempts: settings.maxLoginAttempts ?? 5,
+      sessionTimeout: settings.sessionTimeout ?? 30,
+      emailNotificationsEnabled: settings.emailNotificationsEnabled ?? true,
+    };
   }
 }

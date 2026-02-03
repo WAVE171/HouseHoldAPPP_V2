@@ -1,6 +1,6 @@
 import { IsString, IsOptional, IsEnum, IsBoolean, IsDateString, IsEmail, IsNumber, Min, Max } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Role } from '@prisma/client';
+import { Role, SubscriptionPlan, SubscriptionStatus } from '@prisma/client';
 
 export class UpdateUserRoleDto {
   @IsEnum(Role)
@@ -184,4 +184,111 @@ export class AdminCreateUserDto {
   @IsString()
   @IsOptional()
   phone?: string;
+}
+
+// Subscription management DTOs
+export class SubscriptionsQueryDto {
+  @ApiPropertyOptional({ description: 'Page number', default: 1 })
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  page?: number;
+
+  @ApiPropertyOptional({ description: 'Items per page', default: 20 })
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  @Max(100)
+  limit?: number;
+
+  @ApiPropertyOptional({ description: 'Filter by plan' })
+  @IsOptional()
+  @IsEnum(SubscriptionPlan)
+  plan?: SubscriptionPlan;
+
+  @ApiPropertyOptional({ description: 'Filter by status' })
+  @IsOptional()
+  @IsEnum(SubscriptionStatus)
+  status?: SubscriptionStatus;
+
+  @ApiPropertyOptional({ description: 'Search by household name' })
+  @IsOptional()
+  @IsString()
+  search?: string;
+}
+
+export class UpdateSubscriptionDto {
+  @ApiPropertyOptional({ description: 'New plan' })
+  @IsOptional()
+  @IsEnum(SubscriptionPlan)
+  plan?: SubscriptionPlan;
+
+  @ApiPropertyOptional({ description: 'New status' })
+  @IsOptional()
+  @IsEnum(SubscriptionStatus)
+  status?: SubscriptionStatus;
+}
+
+export class ExtendTrialDto {
+  @ApiProperty({ description: 'Number of days to extend trial' })
+  @IsNumber()
+  @Min(1)
+  @Max(90)
+  days: number;
+}
+
+export class CancelSubscriptionDto {
+  @ApiPropertyOptional({ description: 'Cancellation reason' })
+  @IsOptional()
+  @IsString()
+  reason?: string;
+}
+
+// System settings DTO
+export class UpdateSystemSettingsDto {
+  @ApiPropertyOptional({ description: 'Site name' })
+  @IsOptional()
+  @IsString()
+  siteName?: string;
+
+  @ApiPropertyOptional({ description: 'Support email' })
+  @IsOptional()
+  @IsEmail()
+  supportEmail?: string;
+
+  @ApiPropertyOptional({ description: 'Default trial days' })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(90)
+  defaultTrialDays?: number;
+
+  @ApiPropertyOptional({ description: 'Enable maintenance mode' })
+  @IsOptional()
+  @IsBoolean()
+  maintenanceMode?: boolean;
+
+  @ApiPropertyOptional({ description: 'Enable user registration' })
+  @IsOptional()
+  @IsBoolean()
+  registrationEnabled?: boolean;
+
+  @ApiPropertyOptional({ description: 'Max login attempts before lockout' })
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  @Max(10)
+  maxLoginAttempts?: number;
+
+  @ApiPropertyOptional({ description: 'Session timeout in minutes' })
+  @IsOptional()
+  @IsNumber()
+  @Min(5)
+  @Max(1440)
+  sessionTimeout?: number;
+
+  @ApiPropertyOptional({ description: 'Enable email notifications' })
+  @IsOptional()
+  @IsBoolean()
+  emailNotificationsEnabled?: boolean;
 }

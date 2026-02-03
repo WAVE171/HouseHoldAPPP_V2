@@ -126,6 +126,124 @@ export type HouseholdStatus = 'ACTIVE' | 'SUSPENDED' | 'INACTIVE';
 
 export type SubscriptionPlan = 'FREE' | 'BASIC' | 'PREMIUM' | 'ENTERPRISE';
 export type SubscriptionStatus = 'ACTIVE' | 'TRIAL' | 'PAST_DUE' | 'CANCELLED' | 'EXPIRED';
+export type BillingCycle = 'MONTHLY' | 'YEARLY';
+export type PaymentStatus = 'PENDING' | 'COMPLETED' | 'FAILED' | 'REFUNDED';
+
+// Subscription Management
+export interface Subscription {
+  id: string;
+  householdId: string;
+  householdName: string;
+  plan: SubscriptionPlan;
+  status: SubscriptionStatus;
+  startDate: string;
+  endDate?: string;
+  trialEndsAt?: string;
+  amount: number;
+  currency: string;
+  billingCycle: BillingCycle;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Payment {
+  id: string;
+  subscriptionId: string;
+  amount: number;
+  currency: string;
+  status: PaymentStatus;
+  paymentMethod?: string;
+  invoiceUrl?: string;
+  paidAt?: string;
+  createdAt: string;
+}
+
+export interface SubscriptionWithPayments extends Subscription {
+  payments: Payment[];
+}
+
+export interface UpdateSubscriptionData {
+  plan?: SubscriptionPlan;
+  status?: SubscriptionStatus;
+  endDate?: string;
+  trialEndsAt?: string;
+}
+
+export interface SubscriptionStats {
+  totalRevenue: number;
+  monthlyRecurringRevenue: number;
+  activeSubscriptions: number;
+  trialSubscriptions: number;
+  cancelledThisMonth: number;
+  byPlan: {
+    FREE: number;
+    BASIC: number;
+    PREMIUM: number;
+    ENTERPRISE: number;
+  };
+}
+
+// Plan configuration
+export interface PlanConfig {
+  plan: SubscriptionPlan;
+  name: string;
+  price: number;
+  yearlyPrice: number;
+  features: string[];
+  maxMembers: number;
+  maxHouseholds: number;
+}
+
+export const PLAN_CONFIGS: PlanConfig[] = [
+  {
+    plan: 'FREE',
+    name: 'Free',
+    price: 0,
+    yearlyPrice: 0,
+    features: ['1 household', '3 members', 'Basic features'],
+    maxMembers: 3,
+    maxHouseholds: 1,
+  },
+  {
+    plan: 'BASIC',
+    name: 'Basic',
+    price: 9.99,
+    yearlyPrice: 99.99,
+    features: ['1 household', '10 members', 'All features', 'Email support'],
+    maxMembers: 10,
+    maxHouseholds: 1,
+  },
+  {
+    plan: 'PREMIUM',
+    name: 'Premium',
+    price: 19.99,
+    yearlyPrice: 199.99,
+    features: ['1 household', 'Unlimited members', 'All features', 'Priority support'],
+    maxMembers: -1,
+    maxHouseholds: 1,
+  },
+  {
+    plan: 'ENTERPRISE',
+    name: 'Enterprise',
+    price: 49.99,
+    yearlyPrice: 499.99,
+    features: ['Multiple households', 'Unlimited members', 'API access', 'Dedicated support'],
+    maxMembers: -1,
+    maxHouseholds: -1,
+  },
+];
+
+// System Settings
+export interface SystemSettings {
+  siteName: string;
+  supportEmail: string;
+  defaultTrialDays: number;
+  maintenanceMode: boolean;
+  registrationEnabled: boolean;
+  maxLoginAttempts: number;
+  sessionTimeout: number; // in minutes
+  emailNotificationsEnabled: boolean;
+}
 
 export interface PaginatedResponse<T> {
   data: T[];
