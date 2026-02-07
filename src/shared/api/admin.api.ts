@@ -161,6 +161,25 @@ export interface SystemStats {
   newHouseholdsThisMonth: number;
 }
 
+// Recent activity types
+export type RecentActivityType = 'USER_REGISTERED' | 'HOUSEHOLD_CREATED' | 'SUBSCRIPTION_CHANGED' | 'USER_LOCKED';
+
+export interface RecentActivity {
+  id: string;
+  type: RecentActivityType;
+  description: string;
+  timestamp: string;
+  metadata?: Record<string, unknown>;
+}
+
+// Trends data for charts
+export interface TrendsData {
+  userSignups: number[];
+  householdCreations: number[];
+  activeUsers: number[];
+  labels: string[];
+}
+
 // Enhanced System Stats for Super Admin Dashboard
 export interface EnhancedSystemStats {
   // Core metrics
@@ -182,6 +201,12 @@ export interface EnhancedSystemStats {
     PREMIUM: number;
     ENTERPRISE: number;
   };
+
+  // Trends data (last 7 days)
+  trends?: TrendsData;
+
+  // Recent activity
+  recentActivity?: RecentActivity[];
 }
 
 export type HouseholdStatus = 'ACTIVE' | 'SUSPENDED' | 'INACTIVE';
@@ -833,10 +858,61 @@ export const adminApi = {
     }
   },
 
+  // Create user (Super Admin)
+  createUser: async (data: {
+    email: string;
+    firstName: string;
+    lastName: string;
+    role: UserRole;
+    password?: string;
+    householdId?: string;
+    phone?: string;
+  }): Promise<{
+    id: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    role: string;
+    householdId?: string;
+    tempPassword?: string;
+    createdAt: string;
+  }> => {
+    if (USE_MOCK_API) {
+      await mockDelay();
+      const tempPassword = data.password || 'TempPass123!';
+      const newUser = {
+        id: `user-${Date.now()}`,
+        email: data.email,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        role: data.role,
+        householdId: data.householdId,
+        tempPassword: data.password ? undefined : tempPassword,
+        createdAt: new Date().toISOString(),
+      };
+      return newUser;
+    }
+    try {
+      const response = await apiClient.post('/admin/system/users', data);
+      return response.data;
+    } catch (error) {
+      throw new Error(getApiErrorMessage(error));
+    }
+  },
+
   // Enhanced system stats (Super Admin)
   getEnhancedSystemStats: async (): Promise<EnhancedSystemStats> => {
     if (USE_MOCK_API) {
       await mockDelay();
+      // Generate day labels for the last 7 days
+      const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      const labels: string[] = [];
+      for (let i = 6; i >= 0; i--) {
+        const date = new Date();
+        date.setDate(date.getDate() - i);
+        labels.push(days[date.getDay()]);
+      }
+
       return {
         totalUsers: mockUsers.length + 1, // +1 for superadmin
         totalHouseholds: mockHouseholds.length,
@@ -852,6 +928,49 @@ export const adminApi = {
           PREMIUM: 0,
           ENTERPRISE: 0,
         },
+        trends: {
+          userSignups: [1, 0, 2, 1, 0, 1, 0],
+          householdCreations: [0, 1, 0, 0, 1, 0, 0],
+          activeUsers: [12, 15, 14, 18, 16, 20, 22],
+          labels,
+        },
+        recentActivity: [
+          {
+            id: 'activity-1',
+            type: 'USER_REGISTERED',
+            description: 'New user "John Smith" registered',
+            timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+            metadata: { userId: 'user-new-1', email: 'john.smith@example.com' },
+          },
+          {
+            id: 'activity-2',
+            type: 'HOUSEHOLD_CREATED',
+            description: 'Household "Anderson Family" created',
+            timestamp: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
+            metadata: { householdId: 'household-new-1' },
+          },
+          {
+            id: 'activity-3',
+            type: 'SUBSCRIPTION_CHANGED',
+            description: 'Smith Family upgraded to Premium plan',
+            timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+            metadata: { householdId: 'household-1', oldPlan: 'BASIC', newPlan: 'PREMIUM' },
+          },
+          {
+            id: 'activity-4',
+            type: 'USER_LOCKED',
+            description: 'User "suspicious@example.com" locked due to failed logins',
+            timestamp: new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString(),
+            metadata: { userId: 'user-locked-1', reason: 'Too many failed login attempts' },
+          },
+          {
+            id: 'activity-5',
+            type: 'USER_REGISTERED',
+            description: 'New user "Maria Garcia" registered',
+            timestamp: new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString(),
+            metadata: { userId: 'user-new-2', email: 'maria.garcia@example.com' },
+          },
+        ],
       };
     }
     try {

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { formatDistanceToNow } from 'date-fns';
 import {
   Users,
   Home,
@@ -9,6 +10,10 @@ import {
   Building,
   CreditCard,
   RefreshCw,
+  Clock,
+  UserCheck,
+  Lock,
+  ArrowUpRight,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
 import { Button } from '@/shared/components/ui/button';
@@ -235,6 +240,166 @@ export function SystemDashboard({ onCreateHousehold, onCreateUser }: SystemDashb
             </div>
           </CardContent>
         </Card>
+      </div>
+
+      {/* Trends & Activity Row */}
+      <div className="grid gap-4 md:grid-cols-2">
+        {/* Weekly Trends Chart */}
+        {stats.trends && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="h-5 w-5" />
+                Weekly Activity Trends
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {/* Active Users Chart */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm text-muted-foreground">Daily Active Users</span>
+                    <span className="text-sm font-medium text-green-600">
+                      {stats.trends.activeUsers[stats.trends.activeUsers.length - 1]} today
+                    </span>
+                  </div>
+                  <div className="flex items-end gap-1 h-16">
+                    {stats.trends.activeUsers.map((value, index) => {
+                      const maxValue = Math.max(...stats.trends!.activeUsers);
+                      const height = maxValue > 0 ? (value / maxValue) * 100 : 0;
+                      return (
+                        <div
+                          key={index}
+                          className="flex-1 bg-green-500/20 rounded-t relative group"
+                          style={{ height: `${height}%`, minHeight: '4px' }}
+                        >
+                          <div
+                            className="absolute bottom-0 left-0 right-0 bg-green-500 rounded-t transition-all"
+                            style={{ height: '100%' }}
+                          />
+                          <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-black text-white text-xs px-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                            {value}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="flex justify-between mt-1">
+                    {stats.trends.labels.map((label, index) => (
+                      <span key={index} className="text-xs text-muted-foreground flex-1 text-center">
+                        {label}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                {/* User Signups & Household Creations */}
+                <div className="grid grid-cols-2 gap-4 pt-2 border-t">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <div className="h-2 w-2 rounded-full bg-blue-500" />
+                      <span className="text-xs text-muted-foreground">User Signups</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      {stats.trends.userSignups.map((value, index) => (
+                        <div
+                          key={index}
+                          className="flex-1 h-4 bg-blue-500 rounded-sm opacity-20"
+                          style={{ opacity: value > 0 ? 0.4 + (value * 0.2) : 0.1 }}
+                        />
+                      ))}
+                    </div>
+                    <p className="text-sm font-medium mt-1">
+                      {stats.trends.userSignups.reduce((a, b) => a + b, 0)} this week
+                    </p>
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <div className="h-2 w-2 rounded-full bg-purple-500" />
+                      <span className="text-xs text-muted-foreground">New Households</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      {stats.trends.householdCreations.map((value, index) => (
+                        <div
+                          key={index}
+                          className="flex-1 h-4 bg-purple-500 rounded-sm opacity-20"
+                          style={{ opacity: value > 0 ? 0.4 + (value * 0.2) : 0.1 }}
+                        />
+                      ))}
+                    </div>
+                    <p className="text-sm font-medium mt-1">
+                      {stats.trends.householdCreations.reduce((a, b) => a + b, 0)} this week
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Recent Activity Feed */}
+        {stats.recentActivity && stats.recentActivity.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Clock className="h-5 w-5" />
+                Recent Activity
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {stats.recentActivity.slice(0, 5).map((activity) => {
+                  const getActivityIcon = () => {
+                    switch (activity.type) {
+                      case 'USER_REGISTERED':
+                        return <UserPlus className="h-4 w-4 text-green-500" />;
+                      case 'HOUSEHOLD_CREATED':
+                        return <Building className="h-4 w-4 text-blue-500" />;
+                      case 'SUBSCRIPTION_CHANGED':
+                        return <ArrowUpRight className="h-4 w-4 text-purple-500" />;
+                      case 'USER_LOCKED':
+                        return <Lock className="h-4 w-4 text-red-500" />;
+                      default:
+                        return <Activity className="h-4 w-4 text-gray-500" />;
+                    }
+                  };
+
+                  const getActivityBadge = () => {
+                    switch (activity.type) {
+                      case 'USER_REGISTERED':
+                        return <Badge variant="outline" className="text-green-600 border-green-200">New User</Badge>;
+                      case 'HOUSEHOLD_CREATED':
+                        return <Badge variant="outline" className="text-blue-600 border-blue-200">New Household</Badge>;
+                      case 'SUBSCRIPTION_CHANGED':
+                        return <Badge variant="outline" className="text-purple-600 border-purple-200">Subscription</Badge>;
+                      case 'USER_LOCKED':
+                        return <Badge variant="outline" className="text-red-600 border-red-200">Security</Badge>;
+                      default:
+                        return null;
+                    }
+                  };
+
+                  return (
+                    <div key={activity.id} className="flex items-start gap-3">
+                      <div className="mt-0.5">
+                        {getActivityIcon()}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm truncate">{activity.description}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          {getActivityBadge()}
+                          <span className="text-xs text-muted-foreground">
+                            {formatDistanceToNow(new Date(activity.timestamp), { addSuffix: true })}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Alerts Section */}

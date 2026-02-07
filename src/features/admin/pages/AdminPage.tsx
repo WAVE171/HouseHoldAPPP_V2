@@ -182,9 +182,11 @@ export function AdminPage() {
               onUpdateStatus={handleUpdateUserStatus}
               onResetPassword={handleResetPassword}
               onImpersonate={handleImpersonate}
+              onRefresh={fetchData}
               showHousehold={true}
               showResetPassword={true}
               showImpersonate={true}
+              showCreateUser={true}
             />
           </TabsContent>
 

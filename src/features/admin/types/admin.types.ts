@@ -99,6 +99,25 @@ export interface SystemStats {
   newHouseholdsThisMonth: number; // New households this month
 }
 
+// Recent activity types
+export type RecentActivityType = 'USER_REGISTERED' | 'HOUSEHOLD_CREATED' | 'SUBSCRIPTION_CHANGED' | 'USER_LOCKED';
+
+export interface RecentActivity {
+  id: string;
+  type: RecentActivityType;
+  description: string;
+  timestamp: string;
+  metadata?: Record<string, unknown>;
+}
+
+// Trends data for charts
+export interface TrendsData {
+  userSignups: number[];        // Daily user signups for last 7 days
+  householdCreations: number[]; // Daily household creations for last 7 days
+  activeUsers: number[];        // Daily active users for last 7 days
+  labels: string[];             // Day labels (e.g., "Mon", "Tue", etc.)
+}
+
 // Enhanced SystemStats for Super Admin dashboard
 export interface EnhancedSystemStats {
   // Core metrics
@@ -120,6 +139,12 @@ export interface EnhancedSystemStats {
     PREMIUM: number;
     ENTERPRISE: number;
   };
+
+  // Trends data (last 7 days)
+  trends?: TrendsData;
+
+  // Recent activity
+  recentActivity?: RecentActivity[];
 }
 
 export type HouseholdStatus = 'ACTIVE' | 'SUSPENDED' | 'INACTIVE';

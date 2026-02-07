@@ -7,6 +7,7 @@ import { EmployeeCard } from '../components/EmployeeCard';
 import { PayrollSummary } from '../components/PayrollSummary';
 import { ScheduleOverview } from '../components/ScheduleOverview';
 import { AddEmployeeDialog } from '../components/AddEmployeeDialog';
+import { EditEmployeeDialog } from '../components/EditEmployeeDialog';
 import type { Employee, PayrollRecord, TimeEntry } from '../types/employees.types';
 import { employeesApi, type CreateEmployeeData } from '@/shared/api/employees.api';
 import { useToast } from '@/shared/hooks/use-toast';
@@ -18,7 +19,8 @@ export function EmployeesPage() {
   const [payrollRecords, setPayrollRecords] = useState<PayrollRecord[]>([]);
   const [_timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [_selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
+  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -116,6 +118,48 @@ export function EmployeesPage() {
     }
   };
 
+  const handleUpdateEmployee = async (id: string, data: Partial<CreateEmployeeData>) => {
+    try {
+      const updated = await employeesApi.updateEmployee(id, data);
+      const updatedEmployee: Employee = {
+        id: updated.id,
+        firstName: updated.firstName,
+        lastName: updated.lastName,
+        email: updated.email,
+        phone: updated.phone,
+        address: updated.address,
+        position: updated.position,
+        department: updated.department as Employee['department'],
+        employmentType: updated.employmentType as Employee['employmentType'],
+        salary: updated.salary,
+        payFrequency: updated.payFrequency as Employee['payFrequency'],
+        hireDate: updated.hireDate,
+        terminationDate: updated.terminationDate,
+        emergencyContactName: updated.emergencyContactName,
+        emergencyContactPhone: updated.emergencyContactPhone,
+        photo: updated.photo,
+        status: updated.terminationDate ? 'inactive' : 'active',
+      };
+      setEmployees(prev => prev.map(e => e.id === id ? updatedEmployee : e));
+      toast({
+        title: 'Success',
+        description: `${updated.firstName} ${updated.lastName} has been updated`,
+      });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to update employee',
+        variant: 'destructive',
+      });
+      throw error;
+    }
+  };
+
+  const handleSelectEmployee = (employee: Employee) => {
+    setSelectedEmployee(employee);
+    setEditDialogOpen(true);
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-[500px]">
@@ -185,7 +229,7 @@ export function EmployeesPage() {
                       <EmployeeCard
                         key={employee.id}
                         employee={employee}
-                        onSelect={setSelectedEmployee}
+                        onSelect={handleSelectEmployee}
                       />
                     ))}
                   </div>
@@ -202,7 +246,7 @@ export function EmployeesPage() {
                       <EmployeeCard
                         key={employee.id}
                         employee={employee}
-                        onSelect={setSelectedEmployee}
+                        onSelect={handleSelectEmployee}
                       />
                     ))}
                   </div>
@@ -220,6 +264,14 @@ export function EmployeesPage() {
           />
         </TabsContent>
       </Tabs>
+
+      {/* Edit Employee Dialog */}
+      <EditEmployeeDialog
+        employee={selectedEmployee}
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        onUpdateEmployee={handleUpdateEmployee}
+      />
     </div>
   );
 }

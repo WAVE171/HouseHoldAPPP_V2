@@ -8,6 +8,7 @@ import {
   Shield,
   KeyRound,
   Eye,
+  RefreshCw,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
 import { Input } from '@/shared/components/ui/input';
@@ -31,15 +32,18 @@ import {
 } from '@/shared/components/ui/dropdown-menu';
 import { cn } from '@/shared/lib/utils';
 import type { SystemUser, AdminUserRole } from '../types/admin.types';
+import { AddUserDialog } from './AddUserDialog';
 
 interface UserManagementProps {
   users: SystemUser[];
   onUpdateStatus: (userId: string, isLocked: boolean) => void;
   onResetPassword?: (userId: string) => void;
   onImpersonate?: (userId: string) => void;
+  onRefresh?: () => void;
   showHousehold?: boolean;
   showResetPassword?: boolean;
   showImpersonate?: boolean;
+  showCreateUser?: boolean;
 }
 
 const roleColors: Record<AdminUserRole, string> = {
@@ -55,9 +59,11 @@ export function UserManagement({
   onUpdateStatus,
   onResetPassword,
   onImpersonate,
+  onRefresh,
   showHousehold = false,
   showResetPassword = false,
   showImpersonate = false,
+  showCreateUser = false,
 }: UserManagementProps) {
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -83,14 +89,24 @@ export function UserManagement({
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle>User Management</CardTitle>
-          <div className="relative w-[300px]">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search users..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-            />
+          <div className="flex items-center gap-3">
+            <div className="relative w-[300px]">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search users..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            {onRefresh && (
+              <Button variant="outline" size="icon" onClick={onRefresh}>
+                <RefreshCw className="h-4 w-4" />
+              </Button>
+            )}
+            {showCreateUser && onRefresh && (
+              <AddUserDialog onUserCreated={onRefresh} />
+            )}
           </div>
         </div>
       </CardHeader>

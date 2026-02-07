@@ -109,7 +109,7 @@ export const router = createBrowserRouter([
       {
         path: '/employees',
         element: (
-          <ProtectedRoute roles={['ADMIN', 'PARENT']}>
+          <ProtectedRoute roles={['ADMIN', 'PARENT', 'SUPER_ADMIN']}>
             <EmployeesPage />
           </ProtectedRoute>
         ),
@@ -133,7 +133,7 @@ export const router = createBrowserRouter([
       {
         path: '/finance',
         element: (
-          <ProtectedRoute roles={['ADMIN', 'PARENT']}>
+          <ProtectedRoute roles={['ADMIN', 'PARENT', 'SUPER_ADMIN']}>
             <FinancePage />
           </ProtectedRoute>
         ),
@@ -149,7 +149,7 @@ export const router = createBrowserRouter([
       {
         path: '/admin',
         element: (
-          <ProtectedRoute roles={['ADMIN']}>
+          <ProtectedRoute roles={['ADMIN', 'SUPER_ADMIN']}>
             <AdminPage />
           </ProtectedRoute>
         ),
@@ -169,7 +169,7 @@ export const router = createBrowserRouter([
       {
         path: '/scanning',
         element: (
-          <ProtectedRoute roles={['ADMIN', 'PARENT', 'STAFF']}>
+          <ProtectedRoute roles={['ADMIN', 'PARENT', 'STAFF', 'SUPER_ADMIN']}>
             <Suspense fallback={
               <div className="flex h-[50vh] items-center justify-center">
                 <div className="text-center">
